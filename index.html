@@ -1,0 +1,3451 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ Thống Quản Lý Kỹ Thuật & KPI V2.8</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- SheetJS Excel Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- html2pdf Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        .shift-row-a { background-color: #fff1f2 !important; } /* Ca A - Light Pink/Red */
+        .shift-row-b { background-color: #fefbeb !important; } /* Ca B - Light Yellow */
+        .shift-row-c { background-color: #f0fdf4 !important; } /* Ca C - Light Green */
+        .shift-row-n { background-color: #f5f3ff !important; } /* Ca N - Light Purple */
+        
+        /* Deep solid borders separating ca trực */
+        .shift-separator {
+            border-top: 4px solid #0f172a !important;
+        }
+        
+        .tab-active {
+            border-bottom: 3px solid #2563eb;
+            color: #2563eb;
+            font-weight: 800;
+        }
+        
+        /* Premium customized scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col antialiased font-sans">
+
+    <!-- TOAST NOTIFICATION SYSTEM -->
+    <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- CUSTOM CONFIRM MODAL -->
+    <div id="custom-confirm-modal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl w-full max-w-sm p-6 space-y-4 shadow-2xl">
+            <div class="flex items-start gap-3">
+                <div class="bg-amber-100 text-amber-600 p-2.5 rounded-2xl">
+                    <i class="fa-solid fa-triangle-exclamation text-xl"></i>
+                </div>
+                <div>
+                    <h3 id="confirm-title" class="font-bold text-slate-900 text-base">Xác nhận</h3>
+                    <p id="confirm-message" class="text-xs text-slate-500 mt-1"></p>
+                </div>
+            </div>
+            <div class="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                <button id="confirm-cancel-btn" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-xs font-bold rounded-xl text-slate-600">Hủy</button>
+                <button id="confirm-ok-btn" class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-xs font-bold rounded-xl text-white">Xác nhận</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- LOGIN SCREEN WITH MANUAL PASSWORD -->
+    <div id="login-container" class="fixed inset-0 flex items-center justify-center bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 z-50 p-4 transition-all duration-300">
+        <div class="bg-white/95 backdrop-blur-md p-8 rounded-3xl shadow-2xl w-full max-w-md border border-white/20">
+            <div class="mb-6 flex justify-center flex-col items-center">
+                <div class="bg-blue-600 text-white p-4 rounded-2xl shadow-lg shadow-blue-500/30 mb-3 animate-bounce">
+                    <i class="fa-solid fa-helmet-safety text-4xl"></i>
+                </div>
+                <h1 class="text-2xl font-black text-slate-900 tracking-tight">KỸ THUẬT & KPI V2.8</h1>
+                <p class="text-xs text-slate-500 mt-1">Hệ thống phân công & Thiết kế form bảo trì</p>
+            </div>
+            
+            <form id="login-form" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold uppercase text-slate-500 mb-1">Thành viên (User)</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                            <i class="fa-solid fa-user-circle"></i>
+                        </span>
+                        <select id="login-username-select" required
+                            class="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm font-bold text-slate-700 transition-all duration-200">
+                            <!-- Populated dynamically -->
+                        </select>
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="block text-xs font-bold uppercase text-slate-500 mb-1">Mật khẩu (Password)</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                            <i class="fa-solid fa-lock"></i>
+                        </span>
+                        <input type="password" id="login-password-input" required placeholder="Nhập mật khẩu..."
+                            class="w-full pl-10 pr-10 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm font-bold text-slate-700 transition-all duration-200">
+                        <button type="button" onclick="toggleLoginPasswordVisibility()" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600">
+                            <i id="login-pass-toggle-icon" class="fa-solid fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="pt-2">
+                    <button type="submit" 
+                        class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-bold text-sm tracking-wide shadow-lg shadow-blue-500/20 active:scale-[0.98] transition-all duration-150">
+                        ĐĂNG NHẬP HỆ THỐNG
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MAIN WORKSPACE -->
+    <div id="main-workspace" class="hidden flex flex-col min-h-screen">
+        <!-- TOP NAVIGATION BAR -->
+        <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm px-4 lg:px-8 py-3 flex flex-wrap justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <div class="bg-blue-600 text-white p-2 rounded-xl flex items-center justify-center shadow-md">
+                    <i class="fa-solid fa-screwdriver-wrench text-lg"></i>
+                </div>
+                <div>
+                    <h2 class="font-extrabold text-lg text-slate-900 tracking-tight flex items-center gap-2">
+                        V2.8 PRO MANAGEMENT
+                    </h2>
+                    <div class="text-[11px] text-slate-400 flex items-center gap-1">
+                        <span id="header-user-fullname" class="font-bold text-slate-600">Đang tải...</span>
+                        <span>(<span id="header-user-role" class="text-blue-600 font-semibold">Vai trò</span>)</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TABS MENU -->
+            <nav class="flex space-x-1 bg-slate-100 p-1 rounded-xl text-xs font-bold" id="app-nav">
+                <button onclick="switchTab('weekly-plan')" id="tab-btn-weekly-plan" class="flex items-center gap-1.5 px-3 py-2 rounded-lg text-slate-600 hover:bg-white hover:text-slate-900 transition-all duration-200">
+                    <i class="fa-solid fa-calendar-week text-blue-600"></i> WEEKLY PLAN
+                </button>
+                <button onclick="switchTab('backlogs')" id="tab-btn-backlogs" class="flex items-center gap-1.5 px-3 py-2 rounded-lg text-slate-600 hover:bg-white hover:text-slate-900 transition-all duration-200">
+                    <i class="fa-solid fa-triangle-exclamation text-amber-500"></i> CÔNG VIỆC TỒN ĐỌNG / PHÁT SINH
+                </button>
+                <button onclick="switchTab('maintenance-forms')" id="tab-btn-maintenance-forms" class="flex items-center gap-1.5 px-3 py-2 rounded-lg text-slate-600 hover:bg-white hover:text-slate-900 transition-all duration-200">
+                    <i class="fa-solid fa-file-invoice text-indigo-600"></i> FORM BẢO TRÌ
+                </button>
+                <button onclick="switchTab('kpi-dashboard')" id="tab-btn-kpi-dashboard" class="flex items-center gap-1.5 px-3 py-2 rounded-lg text-slate-600 hover:bg-white hover:text-slate-900 transition-all duration-200">
+                    <i class="fa-solid fa-chart-line text-emerald-600"></i> DASHBOARD KPI
+                </button>
+                <button onclick="switchTab('admin-config')" id="tab-btn-admin-config" class="flex items-center gap-1.5 px-3 py-2 rounded-lg text-slate-600 hover:bg-white hover:text-slate-900 transition-all duration-200">
+                    <i class="fa-solid fa-gears text-rose-600"></i> CẤU HÌNH ADMIN
+                </button>
+            </nav>
+
+            <!-- EXTRA SYSTEMS CONTROLS -->
+            <div class="flex items-center gap-3">
+                <!-- Admin Notification Bell -->
+                <div id="admin-bell-wrapper" class="hidden relative">
+                    <button onclick="toggleAdminNotificationDropdown(event)" class="relative text-slate-600 hover:text-blue-600 bg-slate-100 p-2.5 rounded-xl transition duration-200">
+                        <i class="fa-solid fa-bell text-sm"></i>
+                        <span id="admin-bell-badge" class="hidden absolute -top-1 -right-1 bg-rose-500 text-white text-[9px] font-black w-4.5 h-4.5 rounded-full flex items-center justify-center animate-bounce">0</span>
+                    </button>
+                    <!-- Bell Dropdown -->
+                    <div id="admin-bell-dropdown" class="hidden absolute right-0 mt-2 bg-white border border-slate-200 shadow-2xl rounded-2xl p-3 z-50 w-[320px] space-y-2 text-left">
+                        <div class="flex justify-between items-center border-b pb-1.5">
+                            <span class="text-xs font-bold text-slate-700 flex items-center gap-1">
+                                <i class="fa-solid fa-bell text-blue-500"></i> Thông báo bảo trì mới
+                            </span>
+                            <button onclick="markAllNotificationsRead(event)" class="text-[10px] text-blue-600 hover:underline font-bold">Đánh dấu đã đọc</button>
+                        </div>
+                        <div id="admin-bell-list" class="space-y-1.5 max-h-60 overflow-y-auto pr-1">
+                            <!-- Notifications populate here -->
+                        </div>
+                    </div>
+                </div>
+
+                <span id="idle-timer" class="text-xs text-slate-400 bg-slate-100 px-2.5 py-1 rounded-lg flex items-center gap-1">
+                    <i class="fa-solid fa-hourglass-half"></i> Tự tắt: Không cài
+                </span>
+                <button onclick="logout()" class="text-rose-500 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 p-2.5 rounded-xl transition duration-200" title="Đăng xuất">
+                    <i class="fa-solid fa-power-off text-sm"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- TOP NOTIFICATION BANNER -->
+        <div id="admin-notify-banner" class="hidden bg-indigo-50 border-b border-indigo-200 px-8 py-3 flex justify-between items-center text-sm text-indigo-900">
+            <div class="flex items-center gap-2">
+                <i class="fa-solid fa-bell text-indigo-600 animate-bounce"></i>
+                <span id="notify-msg">Không có thông báo mới.</span>
+            </div>
+            <button onclick="clearNotify()" class="text-indigo-400 hover:text-indigo-700 font-bold">X</button>
+        </div>
+
+        <!-- MAIN VIEWS WRAPPER -->
+        <main class="flex-grow p-4 lg:p-6 max-w-full overflow-hidden">
+            
+            <!-- SECTION: WEEKLY PLAN -->
+            <section id="view-weekly-plan" class="hidden space-y-4">
+                <!-- Top Actions Bar -->
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-wrap justify-between items-center gap-4">
+                    <div>
+                        <h1 class="text-lg font-black text-slate-900 flex items-center gap-2 tracking-tight">
+                            <i class="fa-solid fa-calendar-days text-blue-600"></i> BẢNG KẾ HOẠCH PHÂN CÔNG TUẦN (WEEKLY PLAN)
+                        </h1>
+                        <p class="text-xs text-slate-400 mt-1">Cột "Người thực hiện" tự co dãn để hiện toàn bộ danh sách. Cho phép chèn nhiều link Google Sheet cùng lúc.</p>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-3">
+                        <div class="flex items-center gap-1.5 text-xs font-semibold text-slate-500 bg-slate-50 p-1.5 rounded-xl border">
+                            <span>Lọc tuần:</span>
+                            <select id="week-filter" onchange="changeActiveWeekFilter()" class="bg-white border rounded px-2 py-1 font-bold text-slate-700 outline-none">
+                                <!-- Filled dynamically -->
+                            </select>
+                        </div>
+                        <button onclick="createNewNextWeek()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-md flex items-center gap-1.5">
+                            <i class="fa-solid fa-calendar-plus"></i> Tạo tuần làm việc kế tiếp
+                        </button>
+                        <button onclick="exportMonthlyReport()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-md flex items-center gap-1.5">
+                            <i class="fa-solid fa-file-excel"></i> Tải Excel Thầy
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Main Grid/Table For Weekly Plan -->
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div class="overflow-x-auto w-full">
+                        <table class="w-full text-left border-collapse table-fixed min-w-[1550px]">
+                            <thead>
+                                <tr class="bg-slate-50 text-slate-400 text-[11px] font-bold tracking-wider uppercase border-b border-slate-200">
+                                    <th class="w-[110px] p-3 text-center">Ngày</th>
+                                    <th class="w-[90px] p-3 text-center">Ca làm</th>
+                                    <th class="w-[100px] p-3">Nhóm</th>
+                                    <th class="w-[180px] p-3">Khu vực (Co dãn)</th>
+                                    <th class="w-[280px] p-3">Nội dung công việc (Co dãn)</th>
+                                    <th class="w-[120px] p-3 text-center">Minh chứng</th>
+                                    <th class="w-[160px] p-3 text-center">Form bảo trì</th>
+                                    <th class="w-[240px] p-3">Người thực hiện (Co dãn 100%)</th>
+                                    <th class="w-[130px] p-3 text-center">Tiến độ KPI</th>
+                                    <th class="w-[240px] p-3">Ghi chú & Google Sheet (Nhiều link)</th>
+                                    <th class="w-[90px] p-3 text-center">Thao tác</th>
+                                </tr>
+                            </thead>
+                            <tbody id="weekly-plan-table-body">
+                                <!-- Rows inserted dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECTION: BACKLOGS -->
+            <section id="view-backlogs" class="hidden space-y-4">
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-wrap justify-between items-center gap-4">
+                    <div>
+                        <h1 class="text-lg font-black text-slate-900 flex items-center gap-2 tracking-tight">
+                            <i class="fa-solid fa-clock-rotate-left text-amber-500"></i> KHU VỰC CÔNG VIỆC TỒN ĐỌNG / PHÁT SINH
+                        </h1>
+                        <p class="text-xs text-slate-400 mt-1">Lưu trữ các công việc cần giải quyết hoặc điều chỉnh ngày bàn giao lại.</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="createNewBacklogRow()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-md flex items-center gap-1.5">
+                            <i class="fa-solid fa-plus"></i> Tạo dòng phát sinh mới
+                        </button>
+                        <button onclick="exportBacklogsReport()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-md flex items-center gap-1.5">
+                            <i class="fa-solid fa-file-excel"></i> Xuất Tồn Đọng Excel
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div class="overflow-x-auto w-full">
+                        <table class="w-full text-left border-collapse table-fixed min-w-[1300px]">
+                            <thead>
+                                <tr class="bg-slate-50 text-slate-400 text-[11px] font-bold tracking-wider uppercase border-b border-slate-200">
+                                    <th class="w-[110px] p-3 text-center font-bold">Ngày</th>
+                                    <th class="w-[100px] p-3 font-bold">Nhóm</th>
+                                    <th class="w-[130px] p-3 font-bold">Khu vực</th>
+                                    <th class="w-[300px] p-3 font-bold">Nội dung công việc</th>
+                                    <th class="w-[130px] p-3 text-center font-bold">Ảnh</th>
+                                    <th class="w-[180px] p-3 font-bold">Người thực hiện cũ</th>
+                                    <th class="w-[110px] p-3 text-center font-bold">Trạng thái</th>
+                                    <th class="w-[280px] p-3 font-bold text-indigo-600">Phân việc lại (Chọn Ngày)</th>
+                                    <th class="w-[150px] p-3 font-bold">Ghi chú</th>
+                                    <th class="w-[80px] p-3 text-center font-bold">Xóa</th>
+                                </tr>
+                            </thead>
+                            <tbody id="backlogs-table-body">
+                                <!-- Backlog elements -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECTION: MAINTENANCE FORMS -->
+            <section id="view-maintenance-forms" class="hidden space-y-4">
+                <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                    <!-- Folders navigation sidebar -->
+                    <div class="lg:col-span-1 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-4 flex flex-col">
+                        <div class="flex justify-between items-center border-b pb-2">
+                            <h3 class="font-bold text-slate-900 text-sm flex items-center gap-2">
+                                <i class="fa-solid fa-folder-open text-amber-500"></i> HỆ THỐNG THƯ MỤC
+                            </h3>
+                            <button onclick="createNewSubFolderPrompt()" class="bg-slate-100 hover:bg-slate-200 p-1.5 rounded-lg text-slate-600 font-bold text-[10px]" title="Thêm folder mới">
+                                <i class="fa-solid fa-folder-plus text-amber-600"></i> + Thư mục
+                            </button>
+                        </div>
+                        
+                        <div class="space-y-1 overflow-y-auto max-h-[500px]" id="folders-tree-container">
+                            <!-- Populated dynamically with predefined systems -->
+                        </div>
+                    </div>
+
+                    <!-- Design New Form Templates & Filled forms panel -->
+                    <div class="lg:col-span-3 space-y-6">
+                        <div class="grid grid-cols-1 xl:grid-cols-5 gap-6">
+                            
+                            <!-- Template Generator (Form designer matching ảnh_2.png without font options) -->
+                            <div class="xl:col-span-3 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                                <div class="flex justify-between items-center border-b pb-2">
+                                    <h3 class="font-extrabold text-slate-900 text-sm flex items-center gap-2">
+                                        <i class="fa-solid fa-pen-ruler text-indigo-600"></i> Thiết kế Form Bảo Trì (V2.8)
+                                    </h3>
+                                    <span class="text-[10px] text-slate-400 font-bold bg-slate-100 px-2 py-0.5 rounded-full">ảnh_2.png style</span>
+                                </div>
+                                <div class="space-y-3 text-xs">
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                        <div>
+                                            <label class="block text-[10px] font-bold text-slate-400 mb-0.5 uppercase">Tên Form hệ thống</label>
+                                            <input type="text" id="new-template-name" placeholder="Ví dụ: COOLING TOWER, MÁY PHÁT ĐIỆN" class="w-full p-2 border rounded-xl bg-slate-50 font-bold text-slate-800 focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none">
+                                        </div>
+                                        <div>
+                                            <label class="block text-[10px] font-bold text-slate-400 mb-0.5 uppercase">Mã hệ thống</label>
+                                            <input type="text" id="new-template-code" placeholder="Ví dụ: CT-01, GEN-A" class="w-full p-2 border rounded-xl bg-slate-50 font-bold text-slate-800 focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none">
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] font-bold text-slate-400 mb-0.5 uppercase">Chọn Hệ Thống Thư Mục Lưu Trữ</label>
+                                        <select id="new-template-system" class="w-full p-2 border rounded-xl bg-slate-50 font-bold text-slate-700">
+                                            <!-- Folders loaded here -->
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="border-t pt-3 space-y-3">
+                                        <span class="block text-[10px] font-black text-indigo-600 uppercase tracking-wider">HẠNG MỤC KIỂM TRA & CÂU HỎI</span>
+                                        
+                                        <!-- Editable questions design workspace (Matches ảnh_2.png options and styling) -->
+                                        <div id="new-template-questions" class="space-y-4 max-h-96 overflow-y-auto pr-1">
+                                            <!-- Form item modules added here -->
+                                        </div>
+                                        
+                                        <button onclick="addNewQuestionInput()" class="w-full py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 hover:text-indigo-800 text-xs font-bold rounded-xl border border-dashed border-indigo-200 flex items-center justify-center gap-1.5 transition">
+                                            <i class="fa-solid fa-plus-circle"></i> Thêm bước kiểm tra mới
+                                        </button>
+                                    </div>
+                                    <button onclick="saveFormTemplate()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl text-xs shadow-md transition mt-2">
+                                        TẠO BIỂU MẪU HỆ THỐNG MỚI
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- List of Designed Templates (Matches ảnh_3.png) -->
+                            <div class="xl:col-span-2 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                                <div>
+                                    <h3 class="font-extrabold text-slate-900 text-sm flex items-center gap-2 border-b pb-2">
+                                        <i class="fa-solid fa-list-check text-slate-600"></i> Các mẫu Form đã thiết kế
+                                    </h3>
+                                    <div id="templates-list" class="space-y-3 max-h-96 overflow-y-auto mt-2 pr-1">
+                                        <!-- Template cards filled dynamically with preview options -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Main Folder view files panel -->
+                        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                            <div class="flex justify-between items-center border-b pb-2">
+                                <h3 class="font-extrabold text-slate-900 text-sm flex items-center gap-2">
+                                    <i class="fa-solid fa-folder-open text-indigo-600"></i> Các Phiếu Bảo trì trong Thư mục: <span id="current-selected-folder-title" class="text-blue-600 font-black">Hệ điện</span>
+                                </h3>
+                                <button onclick="printAllInFolder()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs px-3 py-1.5 rounded-lg flex items-center gap-1">
+                                    <i class="fa-solid fa-print"></i> In/Xuất hàng loạt PDF folder này
+                                </button>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-96 overflow-y-auto pr-1" id="submitted-forms-list">
+                                <!-- Submitted filled forms rendered dynamically -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECTION: KPI DASHBOARD -->
+            <section id="view-kpi-dashboard" class="hidden space-y-4">
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-wrap justify-between items-center gap-4">
+                    <div>
+                        <h1 class="text-lg font-black text-slate-900 flex items-center gap-2 tracking-tight">
+                            <i class="fa-solid fa-chart-line text-emerald-600"></i> THÀNH TÍCH VÀ ĐIỂM SỐ KPI KỸ THUẬT
+                        </h1>
+                        <p class="text-xs text-slate-400 mt-1">Tính toán hiệu suất công việc thực tế và xếp hạng thái độ (Thang điểm 1-5).</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <select id="kpi-month-filter" onchange="renderKpiDashboard()" class="bg-slate-50 border rounded-xl px-3 py-2 text-xs font-bold text-slate-700 outline-none">
+                            <option value="2026-06">Tháng 06/2026</option>
+                            <option value="2026-05">Tháng 05/2026</option>
+                        </select>
+                        <button onclick="archiveMonthKPI()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-3 py-2 rounded-xl">
+                            Chốt KPI Tháng
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Outstanding & High Achievers Panels -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="bg-gradient-to-br from-indigo-500 to-indigo-600 p-5 rounded-2xl text-white shadow-md flex items-center gap-4">
+                        <div class="bg-white/20 p-3 rounded-xl text-3xl"><i class="fa-solid fa-crown"></i></div>
+                        <div>
+                            <span class="block text-[10px] font-bold uppercase tracking-wider text-indigo-200">Duty Engineer Xuất Sắc</span>
+                            <span id="best-duty-name" class="block font-black text-base">-</span>
+                            <span id="best-duty-score" class="block text-xs text-indigo-100 mt-0.5">KPI: 0% | Thái độ: 0/5</span>
+                        </div>
+                    </div>
+                    <div class="bg-gradient-to-br from-emerald-500 to-emerald-600 p-5 rounded-2xl text-white shadow-md flex items-center gap-4">
+                        <div class="bg-white/20 p-3 rounded-xl text-3xl"><i class="fa-solid fa-star"></i></div>
+                        <div>
+                            <span class="block text-[10px] font-bold uppercase tracking-wider text-emerald-200">Technician Xuất Sắc</span>
+                            <span id="best-tech-name" class="block font-black text-base">-</span>
+                            <span id="best-tech-score" class="block text-xs text-emerald-100 mt-0.5">KPI: 0% | Thái độ: 0/5</span>
+                        </div>
+                    </div>
+                    <div class="bg-gradient-to-br from-rose-500 to-rose-600 p-5 rounded-2xl text-white shadow-md flex items-center gap-4">
+                        <div class="bg-white/20 p-3 rounded-xl text-3xl"><i class="fa-solid fa-award"></i></div>
+                        <div>
+                            <span class="block text-[10px] font-bold uppercase tracking-wider text-rose-200">Carpenter Xuất Sắc</span>
+                            <span id="best-carp-name" class="block font-black text-base">-</span>
+                            <span id="best-carp-score" class="block text-xs text-rose-100 mt-0.5">KPI: 0% | Thái độ: 0/5</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Mixed Charts Section (Bar & Line for Employee Rankings) -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                    <!-- KPI Duty Chart Container -->
+                    <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between h-[340px]">
+                        <div>
+                            <h4 class="font-extrabold text-xs text-slate-500 uppercase tracking-wider">DUTY ENGINEER RANKING CHART</h4>
+                        </div>
+                        <div class="relative flex-grow h-64 mt-2">
+                            <canvas id="kpiDutyChart"></canvas>
+                        </div>
+                    </div>
+                    <!-- KPI Tech Chart Container -->
+                    <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between h-[340px]">
+                        <div>
+                            <h4 class="font-extrabold text-xs text-slate-500 uppercase tracking-wider">TECHNICIAN RANKING CHART</h4>
+                        </div>
+                        <div class="relative flex-grow h-64 mt-2">
+                            <canvas id="kpiTechChart"></canvas>
+                        </div>
+                    </div>
+                    <!-- KPI Carpenter Chart Container -->
+                    <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between h-[340px]">
+                        <div>
+                            <h4 class="font-extrabold text-xs text-slate-500 uppercase tracking-wider">CARPENTER RANKING CHART</h4>
+                        </div>
+                        <div class="relative flex-grow h-64 mt-2">
+                            <canvas id="kpiCarpenterChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Assessment Attitude Pane -->
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                    <div class="flex justify-between items-center border-b pb-2">
+                        <h3 class="font-extrabold text-slate-900 text-sm flex items-center gap-2">
+                            <i class="fa-solid fa-clipboard-user text-blue-600"></i> Đánh giá thái độ & Tổng hợp năng lực nhân viên (Thang 1-5)
+                        </h3>
+                        <div class="flex gap-2">
+                            <button onclick="downloadKpiSheetSum()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3 py-1.5 rounded-lg flex items-center gap-1">
+                                <i class="fa-solid fa-file-excel"></i> Xuất Excel KPI Tổng Hợp
+                            </button>
+                            <button onclick="downloadKpiSheetIndividual()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-3 py-1.5 rounded-lg flex items-center gap-1">
+                                <i class="fa-solid fa-user-tag"></i> Xuất Excel KPI Cá Nhân
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                        <!-- Duty Engineer Group -->
+                        <div class="space-y-3">
+                            <span class="block text-xs font-black text-indigo-700 uppercase bg-indigo-50 px-2.5 py-1 rounded-lg">Nhóm: Duty Engineer</span>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left text-[11px] border-collapse">
+                                    <thead>
+                                        <tr class="bg-slate-50 border-b">
+                                            <th class="p-2">Họ & Tên</th>
+                                            <th class="p-2 text-center font-bold">KPI %</th>
+                                            <th class="p-2 text-center w-24 font-bold">Thái độ (1-5)</th>
+                                            <th class="p-2 font-bold">Ghi chú Admin</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="kpi-group-duty"></tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Technician Group -->
+                        <div class="space-y-3">
+                            <span class="block text-xs font-black text-emerald-700 uppercase bg-emerald-50 px-2.5 py-1 rounded-lg">Nhóm: Technician</span>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left text-[11px] border-collapse">
+                                    <thead>
+                                        <tr class="bg-slate-50 border-b">
+                                            <th class="p-2">Họ & Tên</th>
+                                            <th class="p-2 text-center font-bold">KPI %</th>
+                                            <th class="p-2 text-center w-24 font-bold">Thái độ (1-5)</th>
+                                            <th class="p-2 font-bold">Ghi chú Admin</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="kpi-group-tech"></tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Carpenter Group -->
+                        <div class="space-y-3">
+                            <span class="block text-xs font-black text-rose-700 uppercase bg-rose-50 px-2.5 py-1 rounded-lg">Nhóm: Carpenter</span>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left text-[11px] border-collapse">
+                                    <thead>
+                                        <tr class="bg-slate-50 border-b">
+                                            <th class="p-2">Họ & Tên</th>
+                                            <th class="p-2 text-center font-bold">KPI %</th>
+                                            <th class="p-2 text-center w-24 font-bold">Thái độ (1-5)</th>
+                                            <th class="p-2 font-bold">Ghi chú Admin</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="kpi-group-carpenter"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Monthly Tasks Detail Accordion (Exportable details) -->
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+                    <div class="flex flex-wrap justify-between items-center border-b pb-2 gap-2">
+                        <h3 class="font-extrabold text-slate-900 text-sm flex items-center gap-2">
+                            <i class="fa-solid fa-list-check text-indigo-600"></i> Chi tiết công việc đã làm hàng tháng của từng nhân viên
+                        </h3>
+                        <!-- EXCEL EXPORT BUTTON FOR SELECTED INDIVIDUAL -->
+                        <button onclick="downloadSelectedMemberMonthlyTasks()" class="bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs px-3 py-1.5 rounded-lg flex items-center gap-1.5 shadow-sm transition">
+                            <i class="fa-solid fa-file-excel"></i> Xuất Excel Chi Tiết Nhân Viên
+                        </button>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div class="md:col-span-1 border-r pr-4 max-h-[350px] overflow-y-auto space-y-1" id="members-list-selection-kpi">
+                            <!-- Members selector for monthly tasks details -->
+                        </div>
+                        <div class="md:col-span-3">
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left text-xs border-collapse">
+                                    <thead>
+                                        <tr class="bg-slate-50 font-bold text-slate-500 uppercase border-b">
+                                            <th class="p-2.5 w-28">Ngày</th>
+                                            <th class="p-2.5 w-20">Ca trực</th>
+                                            <th class="p-2.5 w-32">Khu vực</th>
+                                            <th class="p-2.5">Nội dung công việc</th>
+                                            <th class="p-2.5 w-24 text-center">Trạng thái</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="monthly-tasks-details-table">
+                                        <tr><td colspan="5" class="p-4 text-center text-slate-400 font-semibold">Vui lòng chọn nhân viên bên trái để xem chi tiết</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECTION: ADMIN CONFIGURATION -->
+            <section id="view-admin-config" class="hidden space-y-4">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="lg:col-span-1 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                        <h2 class="font-extrabold text-slate-900 text-sm flex items-center gap-2 border-b pb-2">
+                            <i class="fa-solid fa-sliders text-blue-600"></i> Cài Đặt Hệ Thống & Quản Trị
+                        </h2>
+                        
+                        <div class="space-y-3 text-xs">
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Tự động tắt ứng dụng</label>
+                                <select id="admin-auto-off" onchange="updateSystemSettings()" class="w-full p-2 border rounded-xl bg-slate-50 font-bold">
+                                    <option value="never">Không bao giờ</option>
+                                    <option value="30m">Sau 30 phút</option>
+                                    <option value="1h">Sau 1 tiếng</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Thông báo nộp biểu mẫu</label>
+                                <select id="admin-notify-on-submit" onchange="updateSystemSettings()" class="w-full p-2 border rounded-xl bg-slate-50 font-bold">
+                                    <option value="on">Bật (Thông báo màn hình Admin)</option>
+                                    <option value="off">Tắt</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="border-t pt-3 space-y-2">
+                            <span class="block text-[10px] font-bold text-slate-400 uppercase">Phân quyền hiển thị Tab cho Nhân viên</span>
+                            <div class="flex flex-col gap-2 text-xs font-semibold">
+                                <label class="flex items-center gap-2 cursor-pointer bg-slate-50 px-3 py-2 rounded-xl border">
+                                    <input type="checkbox" id="perm-kpi" onchange="updateSystemSettings()" class="rounded text-blue-600">
+                                    <span>Cho phép xem DASHBOARD KPI</span>
+                                </label>
+                                <label class="flex items-center gap-2 cursor-pointer bg-slate-50 px-3 py-2 rounded-xl border">
+                                    <input type="checkbox" id="perm-forms" onchange="updateSystemSettings()" class="rounded text-blue-600">
+                                    <span>Cho phép xem FORM BẢO TRÌ</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="border-t pt-3 space-y-2 text-xs">
+                            <span class="block text-[10px] font-bold text-slate-400 uppercase">Khôi phục hệ thống</span>
+                            <div class="flex gap-2">
+                                <button onclick="pauseApplication()" class="bg-amber-500 hover:bg-amber-600 text-white font-bold py-1.5 px-3 rounded-lg">Tạm dừng</button>
+                                <button onclick="resetApplicationStorage()" class="bg-rose-600 hover:bg-rose-700 text-white font-bold py-1.5 px-3 rounded-lg">Xóa dữ liệu (Reset)</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="lg:col-span-2 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                        <div class="flex justify-between items-center border-b pb-2">
+                            <h2 class="font-extrabold text-slate-900 text-sm flex items-center gap-2">
+                                <i class="fa-solid fa-users-gear text-emerald-600"></i> Quản Lý Tài Khoản Nhân Viên
+                            </h2>
+                            <button onclick="openAddMemberModal()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3 py-1.5 rounded-lg flex items-center gap-1">
+                                <i class="fa-solid fa-user-plus"></i> Thêm Nhân Viên
+                            </button>
+                        </div>
+
+                        <div class="overflow-y-auto max-h-[300px]">
+                            <table class="w-full text-left text-xs border-collapse">
+                                <thead>
+                                    <tr class="bg-slate-50 text-slate-400 font-bold uppercase border-b border-slate-200">
+                                        <th class="p-2">Họ & Tên</th>
+                                        <th class="p-2">Chức danh / Nhóm</th>
+                                        <th class="p-2">Quyền Hệ Thống</th>
+                                        <th class="p-2">Mật khẩu mới (Hiển thị)</th>
+                                        <th class="p-2 text-center">Thao tác</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="members-list-table">
+                                    <!-- Dynamic elements filled below -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AUDIT LOG (LỊCH SỬ CHỈNH SỬA) -->
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                    <div class="flex flex-wrap justify-between items-center border-b pb-3 gap-3">
+                        <h2 class="font-extrabold text-slate-900 text-sm flex items-center gap-2">
+                            <i class="fa-solid fa-history text-indigo-600"></i> Nhật Ký Chỉnh Sửa & Hoạt Động Hệ Thống
+                        </h2>
+                        
+                        <!-- Daily User Log Filter & Export Panel -->
+                        <div class="flex flex-wrap items-center gap-2 bg-slate-50 p-2 rounded-xl border border-slate-200">
+                            <span class="text-[10px] font-bold text-slate-500 uppercase">Xuất file hàng ngày theo User:</span>
+                            <select id="log-export-user" class="p-1.5 border rounded-lg bg-white text-xs font-bold text-slate-700 outline-none">
+                                <!-- Populated dynamically -->
+                            </select>
+                            <input type="date" id="log-export-date" value="2026-06-03" class="p-1.5 border rounded-lg bg-white text-xs font-bold text-slate-700 outline-none">
+                            <button onclick="exportDailyUserLog()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold text-[11px] px-3 py-1.5 rounded-lg flex items-center gap-1 shadow-sm transition">
+                                <i class="fa-solid fa-download"></i> Tải Log Ngày
+                            </button>
+                        </div>
+
+                        <button onclick="exportAuditLogsExcel()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-3 py-1.5 rounded-lg flex items-center gap-1">
+                            <i class="fa-solid fa-file-excel"></i> Xuất Toàn Bộ Nhật Ký
+                        </button>
+                    </div>
+                    <div class="overflow-y-auto max-h-52">
+                        <table class="w-full text-left text-xs border-collapse">
+                            <thead>
+                                <tr class="bg-slate-50 text-slate-400 font-bold border-b">
+                                    <th class="p-2 w-40">Thời gian</th>
+                                    <th class="p-2 w-44">Thành viên thao tác</th>
+                                    <th class="p-2 w-56">Hành động</th>
+                                    <th class="p-2">Chi tiết chỉnh sửa</th>
+                                </tr>
+                            </thead>
+                            <tbody id="audit-logs-table-body">
+                                <!-- Log rows dynamic -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- MODAL: ADD MEMBER -->
+    <div id="modal-add-member" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl w-full max-w-sm p-6 space-y-4 shadow-2xl">
+            <div class="flex justify-between items-center border-b pb-3">
+                <h3 class="font-black text-slate-900 text-base">Thêm Tài Khoản / Nhân Viên</h3>
+                <button onclick="closeAddMemberModal()" class="text-slate-400 hover:text-slate-600 text-lg">&times;</button>
+            </div>
+            <div class="space-y-3 text-xs">
+                <div>
+                    <label class="block font-bold mb-1">Họ và Tên</label>
+                    <input type="text" id="add-mem-fullname" placeholder="Nhập họ và tên" class="w-full p-2 border rounded bg-slate-50">
+                </div>
+                <div>
+                    <label class="block font-bold mb-1">Username đăng nhập</label>
+                    <input type="text" id="add-mem-user" placeholder="Ví dụ: longtd" class="w-full p-2 border rounded bg-slate-50">
+                </div>
+                <div>
+                    <label class="block font-bold mb-1">Mật khẩu</label>
+                    <input type="text" id="add-mem-pass" placeholder="Mặc định: 123" value="123" class="w-full p-2 border rounded bg-slate-50 font-bold">
+                </div>
+                <div>
+                    <label class="block font-bold mb-1">Chức danh công việc</label>
+                    <select id="add-mem-title" class="w-full p-2 border rounded bg-slate-50 font-bold">
+                        <option value="Duty Engineer">Duty Engineer</option>
+                        <option value="Technician">Technician</option>
+                        <option value="Carpenter">Carpenter</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block font-bold mb-1">Quyền Hệ thống</label>
+                    <select id="add-mem-role" class="w-full p-2 border rounded bg-slate-50 font-bold">
+                        <option value="Thành viên">Thành viên</option>
+                        <option value="Admin">Admin</option>
+                    </select>
+                </div>
+            </div>
+            <div class="flex justify-end gap-2 pt-3 border-t">
+                <button onclick="closeAddMemberModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-xs font-bold rounded-xl text-slate-600">Hủy</button>
+                <button onclick="saveNewMember()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-xs font-bold rounded-xl text-white">Lưu Nhân Viên</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: PREVIEW MAINTENANCE FORM -->
+    <div id="modal-preview-form" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white rounded-3xl w-full max-w-xl p-6 space-y-4 shadow-2xl my-8">
+            <div class="flex justify-between items-center border-b pb-3">
+                <h3 class="font-black text-slate-900 text-base" id="preview-form-title">Xem Trước Biểu Mẫu</h3>
+                <button onclick="closePreviewFormModal()" class="text-slate-400 hover:text-slate-600 text-lg">&times;</button>
+            </div>
+            
+            <div id="preview-form-content" class="space-y-4 text-xs max-h-[450px] overflow-y-auto pr-1">
+                <!-- Preview items populated dynamically -->
+            </div>
+
+            <div class="flex justify-end gap-2 pt-3 border-t">
+                <button onclick="closePreviewFormModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-xs font-bold rounded-xl text-slate-600">Đóng</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: FILL MAINTENANCE FORM -->
+    <div id="modal-fill-form" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white rounded-3xl w-full max-w-2xl p-6 space-y-4 shadow-2xl my-8">
+            <div class="flex justify-between items-center border-b pb-3">
+                <h3 class="font-black text-slate-900 text-lg" id="fill-form-title">Điền Phiếu Kiểm Tra</h3>
+                <button onclick="closeFillFormModal()" class="text-slate-400 hover:text-slate-600 text-lg">&times;</button>
+            </div>
+            
+            <form id="active-maintenance-form" class="space-y-4 text-xs">
+                <div class="grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded-xl border text-xs">
+                    <div>
+                        <span class="block font-semibold text-slate-500">Mã thiết bị / Hệ thống:</span>
+                        <span id="fill-form-code" class="font-bold text-slate-800">-</span>
+                    </div>
+                    <div>
+                        <span class="block font-semibold text-slate-500">Ngày lập phiếu:</span>
+                        <span id="fill-form-date" class="font-bold text-slate-800">-</span>
+                    </div>
+                </div>
+
+                <!-- Filled dynamically with designed template properties -->
+                <div>
+                    <span class="block text-sm font-bold text-slate-900 mb-2">Các hạng mục công việc kiểm tra chi tiết:</span>
+                    <div id="fill-form-checklist-container" class="space-y-4">
+                        <!-- Filled dynamically -->
+                    </div>
+                </div>
+
+                <!-- Photo attachments -->
+                <div>
+                    <label class="block font-bold mb-1">Tải ảnh chụp minh chứng hiện trạng (Chọn nhiều ảnh):</label>
+                    <input type="file" id="fill-form-photos" multiple accept="image/*" class="w-full p-1.5 border rounded bg-slate-50 text-xs" onchange="previewFormPhotos(this)">
+                    <div id="fill-form-photos-preview" class="flex flex-wrap gap-2 mt-2"></div>
+                </div>
+
+                <!-- Signatures (Vẽ lại changed to Ký tên) -->
+                <div class="space-y-3 border-t pt-3">
+                    <span class="block text-sm font-bold text-slate-900">Ký xác nhận 3 bên:</span>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <!-- 1. Nhân viên thực hiện -->
+                        <div class="p-3 bg-slate-50 border rounded-xl space-y-2">
+                            <label class="block font-bold">1. Nhân viên làm:</label>
+                            <select id="fill-form-tech-select" class="w-full p-1.5 border rounded bg-white text-xs font-semibold">
+                                <!-- Populated dynamically with techs -->
+                            </select>
+                            <div class="border rounded bg-white p-1">
+                                <canvas id="signature-tech" width="180" height="80" class="border bg-white rounded cursor-crosshair w-full"></canvas>
+                            </div>
+                            <button type="button" onclick="clearSig('tech')" class="text-rose-500 hover:underline text-[10px] font-semibold">Ký tên</button>
+                        </div>
+
+                        <!-- 2. Trưởng ca kỹ thuật -->
+                        <div class="p-3 bg-slate-50 border rounded-xl space-y-2">
+                            <label class="block font-bold">2. Trưởng ca kỹ thuật:</label>
+                            <select id="fill-form-duty-select" class="w-full p-1.5 border rounded bg-white text-xs font-semibold">
+                                <!-- Populated dynamically with duties -->
+                            </select>
+                            <div class="border rounded bg-white p-1">
+                                <canvas id="signature-duty" width="180" height="80" class="border bg-white rounded cursor-crosshair w-full"></canvas>
+                            </div>
+                            <button type="button" onclick="clearSig('duty')" class="text-rose-500 hover:underline text-[10px] font-semibold">Ký tên</button>
+                        </div>
+
+                        <!-- 3. Nhân viên bên thứ ba -->
+                        <div class="p-3 bg-slate-50 border rounded-xl space-y-2">
+                            <label class="block font-bold">3. Nhân viên bên thứ ba:</label>
+                            <input type="text" id="fill-form-thirdparty-name" placeholder="Tên đối tác/Đơn vị..." class="w-full p-1.5 border rounded bg-white text-xs font-semibold">
+                            <div class="border rounded bg-white p-1">
+                                <canvas id="signature-thirdparty" width="180" height="80" class="border bg-white rounded cursor-crosshair w-full"></canvas>
+                            </div>
+                            <button type="button" onclick="clearSig('thirdparty')" class="text-rose-500 hover:underline text-[10px] font-semibold">Ký tên</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-2 pt-3 border-t">
+                    <button type="button" onclick="closeFillFormModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-xs font-bold rounded-xl text-slate-600">Đóng</button>
+                    <button type="submit" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-xs font-bold rounded-xl text-white">HOÀN TẤT & LƯU PHIẾU BẢO TRÌ</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- OFFSCREEN CONTAINER FOR GENERATING PDF EXPORTS -->
+    <div id="pdf-export-canvas" class="fixed -left-[9999px] top-0 bg-white p-8 w-[800px] text-xs space-y-4"></div>
+
+    <script>
+        
+        // Predefined system folders
+        const predefinedSystems = [
+            "Hệ điện", "Hệ lạnh", "Hệ STP", "Hệ AV", "Hệ PCCC", 
+            "Hệ Car parking", "Hệ Nước", "Hạ Tầng", "Hệ Thiết Bị Bếp", 
+            "Hệ Thiết Bị Phòng GYM", "Hệ Quạt", "Hệ BMS", "Hệ Inavate"
+        ];
+
+        // System Members (With custom attitude ratings and credentials)
+        const defaultMembers = [
+            { id: "mem-admin", fullname: "Admin Hệ Thống", user: "admin", pass: "admin123", role: "Admin", title: "Duty Engineer", attitudeGrades: { supervisor: 5, attendance: 5, initiative: 5, feedback: 5, professionalism: 5 }, note: "" },
+            { id: "mem-01", fullname: "Tạ Đức Long", user: "longtd", pass: "123", role: "Thành viên", title: "Duty Engineer", attitudeGrades: { supervisor: 5, attendance: 4, initiative: 5, feedback: 5, professionalism: 5 }, note: "" },
+            { id: "mem-02", fullname: "Võ Tấn Đạt", user: "datvt", pass: "123", role: "Thành viên", title: "Duty Engineer", attitudeGrades: { supervisor: 4.8, attendance: 5, initiative: 4, feedback: 4.5, professionalism: 5 }, note: "" },
+            { id: "mem-03", fullname: "Nguyễn Anh Duy", user: "duyna", pass: "123", role: "Thành viên", title: "Technician", attitudeGrades: { supervisor: 5, attendance: 5, initiative: 5, feedback: 4.8, professionalism: 5 }, note: "" },
+            { id: "mem-04", fullname: "Lê Thiết Quý", user: "quylt", pass: "123", role: "Thành viên", title: "Technician", attitudeGrades: { supervisor: 4, attendance: 4.5, initiative: 4, feedback: 4, professionalism: 4.5 }, note: "" },
+            { id: "mem-05", fullname: "Nguyễn Quốc Việt", user: "vietnq", pass: "123", role: "Thành viên", title: "Carpenter", attitudeGrades: { supervisor: 4.5, attendance: 4.5, initiative: 4, feedback: 4.5, professionalism: 5 }, note: "" }
+        ];
+
+        // V2.8 Advanced templates matching ảnh_2.png
+        const defaultTemplates = [
+            { 
+                id: "tmpl-cooling", 
+                name: "COOLING TOWER", 
+                system: "Hệ lạnh", 
+                code: "CT-01", 
+                questions: [
+                    { 
+                        question: "THỰC HIỆN LOTO", 
+                        description: "1. Chuyển Switch tủ điện sang vị trí off Chiller sẽ bảo trì\n2. Off CB chính bơm nước lạnh/ nóng của Chiller bảo trì\n3. Dán cảnh báo\n4. Thông báo lên nhóm công việc", 
+                        required: true,
+                        options: ["YES", "NO", "N/A"] 
+                    },
+                    {
+                        question: "Kiểm tra nhiệt độ tháp giải nhiệt",
+                        description: "Ghi nhận nhiệt độ nước vào và ra của tháp giải nhiệt",
+                        required: false,
+                        options: [] // Empty options means free text input
+                    }
+                ]
+            }
+        ];
+
+        // Default tasks
+        const defaultTasks = [
+            {
+                id: "task-1",
+                weekNum: "Tuần 23 (01/06 - 07/06/2026)",
+                date: "2026-06-03",
+                shift: "Ca A",
+                group: "Bảo Trì",
+                area: "Hầm B2 Block A - Khu Chiller",
+                content: "Bảo dưỡng định kỳ tủ phân phối hạ thế khu vực máy lạnh chiller.",
+                photos: [],
+                formTemplateId: "tmpl-cooling",
+                formFilledId: null,
+                assignees: ["Tạ Đức Long", "Nguyễn Anh Duy"],
+                progress: "Hoàn thành",
+                note: "Đã xử lý dọn sạch và vệ sinh hoàn tất tháp.",
+                noteColor: "#16a34a",
+                sheetLinks: ["https://docs.google.com/spreadsheets/d/1_H_Example_KPI_Task_Management_Design"]
+            }
+        ];
+
+        let state = {
+            currentUser: null,
+            members: [],
+            tasks: [],
+            backlogs: [],
+            templates: [],
+            formSubmissions: [],
+            folders: [],
+            currentFolder: "Hệ điện",
+            auditLogs: [],
+            weeks: [],
+            adminNotifications: [],
+            settings: {
+                autoOff: "never",
+                notifyOnSubmit: "on",
+                visibleTabs: { kpi: true, forms: true }
+            }
+        };
+
+        // Active workspace for form builder (Size/Color configurations removed)
+        let newTmplQuestions = [
+            { 
+                question: "THỰC HIỆN LOTO", 
+                description: "1. Chuyển Switch tủ điện sang vị trí off Chiller sẽ bảo trì\n2. Off CB chính...\n3. Dán cảnh báo", 
+                required: true,
+                options: ["YES", "NO"]
+            }
+        ];
+
+        let selectedKpiMemberFullname = "";
+        let sigCanvases = { tech: null, duty: null, thirdparty: null };
+        let sigCtxs = { tech: null, duty: null, thirdparty: null };
+        let idleTimerId = null;
+        let currentConfirmCallback = null;
+        let activeWeekFilterVal = "Tuần 23 (01/06 - 07/06/2026)";
+
+        let dutyChartInstance = null;
+        let techChartInstance = null;
+        let carpenterChartInstance = null;
+
+        let formPhotosDataUrls = [];
+        let currentFillTaskId = "";
+        let currentFillTemplate = null;
+
+        function showCustomToast(msg, type = "success") {
+            const container = document.getElementById("toast-container");
+            if (!container) return;
+            const toast = document.createElement("div");
+            let bg = "bg-emerald-600";
+            if (type === "error") bg = "bg-rose-600";
+            if (type === "warning") bg = "bg-amber-500";
+            if (type === "info") bg = "bg-blue-600";
+
+            toast.className = `${bg} text-white text-xs font-bold px-4 py-3 rounded-2xl shadow-xl flex items-center gap-2 pointer-events-auto transition-all duration-300 transform translate-y-2 opacity-0`;
+            toast.innerHTML = `<i class="fa-solid fa-circle-info"></i><span>${msg}</span>`;
+            container.appendChild(toast);
+
+            setTimeout(() => toast.classList.remove("translate-y-2", "opacity-0"), 10);
+            setTimeout(() => {
+                toast.classList.add("translate-y-2", "opacity-0");
+                setTimeout(() => toast.remove(), 300);
+            }, 4000);
+        }
+
+        function showConfirm(title, message, callback) {
+            currentConfirmCallback = callback;
+            document.getElementById("confirm-title").innerText = title;
+            document.getElementById("confirm-message").innerText = message;
+            document.getElementById("custom-confirm-modal").classList.remove("hidden");
+        }
+
+        document.getElementById("confirm-cancel-btn").onclick = function() {
+            document.getElementById("custom-confirm-modal").classList.add("hidden");
+            currentConfirmCallback = null;
+        };
+        document.getElementById("confirm-ok-btn").onclick = function() {
+            document.getElementById("custom-confirm-modal").classList.add("hidden");
+            if (currentConfirmCallback) currentConfirmCallback();
+            currentConfirmCallback = null;
+        };
+
+        function setupIdleTimer() {
+            if (idleTimerId) clearInterval(idleTimerId);
+            const timerSpan = document.getElementById("idle-timer");
+            if (!timerSpan) return;
+            if (state.settings.autoOff === "never") {
+                timerSpan.innerHTML = `<i class="fa-solid fa-hourglass-half"></i> Tự tắt: Không cài`;
+                return;
+            }
+
+            let limitSec = state.settings.autoOff === "30m" ? 30 * 60 : 60 * 60;
+            let currentSec = limitSec;
+
+            timerSpan.innerHTML = `<i class="fa-solid fa-hourglass-half text-amber-500 animate-pulse"></i> Tự tắt: ${Math.floor(currentSec/60)}m`;
+
+            idleTimerId = setInterval(() => {
+                currentSec--;
+                if (currentSec <= 0) {
+                    clearInterval(idleTimerId);
+                    logout();
+                } else {
+                    timerSpan.innerHTML = `<i class="fa-solid fa-hourglass-half text-amber-500 animate-pulse"></i> Tự tắt: ${Math.floor(currentSec/60)}m`;
+                }
+            }, 1000);
+
+            window.onmousemove = window.onkeypress = window.ontouchstart = function() {
+                currentSec = limitSec;
+            };
+        }
+
+        window.onload = function () {
+            if (localStorage.getItem("kpi_app_state_v28")) {
+                try { state = JSON.parse(localStorage.getItem("kpi_app_state_v28")); } catch(e) {}
+            }
+            if (!state.members || state.members.length === 0) state.members = defaultMembers;
+            if (!state.templates || state.templates.length === 0) state.templates = defaultTemplates;
+            if (!state.tasks || state.tasks.length === 0) state.tasks = defaultTasks;
+            if (!state.backlogs) state.backlogs = [];
+            if (!state.formSubmissions) state.formSubmissions = [];
+            if (!state.folders) state.folders = [];
+            if (!state.auditLogs) state.auditLogs = [];
+            if (!state.adminNotifications) state.adminNotifications = [];
+            if (!state.weeks || state.weeks.length === 0) {
+                state.weeks = [
+                    "Tuần 23 (01/06 - 07/06/2026)",
+                    "Tuần 24 (08/06 - 14/06/2026)",
+                    "Tuần 25 (15/06 - 21/06/2026)",
+                    "Tuần 26 (22/06 - 28/06/2026)"
+                ];
+            }
+            if (!state.settings) {
+                state.settings = {
+                    autoOff: "never",
+                    notifyOnSubmit: "on",
+                    visibleTabs: { kpi: true, forms: true }
+                };
+            }
+
+            state.tasks.forEach(t => {
+                if (!t.sheetLinks) {
+                    t.sheetLinks = t.sheetLink ? [t.sheetLink] : [];
+                }
+            });
+
+            saveState();
+            initSignaturePads();
+            setupWeeklyFilters();
+            setupIdleTimer();
+            renderLoginDropdowns();
+
+            if (state.currentUser) {
+                loginSuccess(state.currentUser);
+            }
+        };
+
+        function saveState() {
+            localStorage.setItem("kpi_app_state_v28", JSON.stringify(state));
+        }
+
+        function logAction(action, details) {
+            const entry = {
+                id: "log-" + Date.now(),
+                timestamp: new Date().toLocaleString("vi-VN"),
+                user: state.currentUser ? state.currentUser.fullname : "Khách",
+                action: action,
+                details: details
+            };
+            state.auditLogs.unshift(entry);
+            saveState();
+        }
+
+        function renderLoginDropdowns() {
+            const uSel = document.getElementById("login-username-select");
+            uSel.innerHTML = `<option value="">-- Chọn tài khoản --</option>`;
+            state.members.forEach(m => {
+                const opt = document.createElement("option");
+                opt.value = m.user;
+                opt.innerText = m.fullname;
+                uSel.appendChild(opt);
+            });
+            document.getElementById("login-password-input").value = "";
+        }
+
+        function toggleLoginPasswordVisibility() {
+            const passInput = document.getElementById("login-password-input");
+            const toggleIcon = document.getElementById("login-pass-toggle-icon");
+            if (passInput.type === "password") {
+                passInput.type = "text";
+                toggleIcon.className = "fa-solid fa-eye-slash";
+            } else {
+                passInput.type = "password";
+                toggleIcon.className = "fa-solid fa-eye";
+            }
+        }
+
+        document.getElementById("login-form").onsubmit = function(e) {
+            e.preventDefault();
+            const u = document.getElementById("login-username-select").value;
+            const p = document.getElementById("login-password-input").value;
+
+            const found = state.members.find(m => m.user === u && m.pass === p);
+            if (found) {
+                state.currentUser = found;
+                saveState();
+                logAction("Đăng nhập", "Thành viên đăng nhập thủ công thành công.");
+                loginSuccess(found);
+            } else {
+                showCustomToast("Sai tài khoản hoặc mật khẩu! Vui lòng thử lại.", "error");
+            }
+        };
+
+        function loginSuccess(user) {
+            document.getElementById("login-container").classList.add("hidden");
+            document.getElementById("main-workspace").classList.remove("hidden");
+
+            document.getElementById("header-user-fullname").innerText = user.fullname;
+            document.getElementById("header-user-role").innerText = `${user.role} - ${user.title || ''}`;
+
+            setupRoleUI(user.role);
+            setupIdleTimer();
+            switchTab('weekly-plan');
+
+            const bellWrapper = document.getElementById("admin-bell-wrapper");
+            if (bellWrapper) {
+                if (user.role === "Admin") {
+                    bellWrapper.classList.remove("hidden");
+                    updateAdminNotificationBell();
+                } else {
+                    bellWrapper.classList.add("hidden");
+                }
+            }
+        }
+
+        function setupRoleUI(role) {
+            const adminConfigBtn = document.getElementById("tab-btn-admin-config");
+            const createNextWeekBtn = document.querySelector("button[onclick='createNewNextWeek()']");
+            const createBacklogBtn = document.querySelector("button[onclick='createNewBacklogRow()']");
+            
+            if (role === "Admin") {
+                if (adminConfigBtn) adminConfigBtn.classList.remove("hidden");
+                if (createNextWeekBtn) createNextWeekBtn.classList.remove("hidden");
+                if (createBacklogBtn) createBacklogBtn.classList.remove("hidden");
+            } else {
+                if (adminConfigBtn) adminConfigBtn.classList.add("hidden");
+                if (createNextWeekBtn) createNextWeekBtn.classList.add("hidden");
+                if (createBacklogBtn) createBacklogBtn.classList.add("hidden");
+                
+                if (!state.settings.visibleTabs.kpi) {
+                    const kpiBtn = document.getElementById("tab-btn-kpi-dashboard");
+                    if (kpiBtn) kpiBtn.classList.add("hidden");
+                }
+                if (!state.settings.visibleTabs.forms) {
+                    const formsBtn = document.getElementById("tab-btn-maintenance-forms");
+                    if (formsBtn) formsBtn.classList.add("hidden");
+                }
+            }
+        }
+
+        function logout() {
+            logAction("Đăng xuất", "Đăng xuất khỏi hệ thống.");
+            state.currentUser = null;
+            saveState();
+            document.getElementById("main-workspace").classList.add("hidden");
+            document.getElementById("login-container").classList.remove("hidden");
+            renderLoginDropdowns();
+        }
+
+        function switchTab(tabId) {
+            const views = ["weekly-plan", "backlogs", "maintenance-forms", "kpi-dashboard", "admin-config"];
+            views.forEach(v => {
+                const el = document.getElementById(`view-${v}`);
+                const btn = document.getElementById(`tab-btn-${v}`);
+                if (el) el.classList.add("hidden");
+                if (btn) btn.classList.remove("tab-active", "bg-white", "shadow-sm", "text-slate-900");
+            });
+
+            const activeView = document.getElementById(`view-${tabId}`);
+            const activeBtn = document.getElementById(`tab-btn-${tabId}`);
+            if (activeView) activeView.classList.remove("hidden");
+            if (activeBtn) {
+                activeBtn.classList.add("tab-active", "bg-white", "shadow-sm", "text-slate-900");
+            }
+
+            if (tabId === "weekly-plan") renderWeeklyPlanTable();
+            if (tabId === "backlogs") renderBacklogsTable();
+            if (tabId === "maintenance-forms") renderMaintenanceForms();
+            if (tabId === "kpi-dashboard") renderKpiDashboard();
+            if (tabId === "admin-config") renderAdminConfig();
+        }
+
+        function setupWeeklyFilters() {
+            const filter = document.getElementById("week-filter");
+            if (!filter) return;
+            filter.innerHTML = "";
+            state.weeks.forEach(w => {
+                const opt = document.createElement("option");
+                opt.value = w;
+                opt.innerText = w;
+                if (w === activeWeekFilterVal) opt.selected = true;
+                filter.appendChild(opt);
+            });
+        }
+
+        function changeActiveWeekFilter() {
+            activeWeekFilterVal = document.getElementById("week-filter").value;
+            renderWeeklyPlanTable();
+        }
+
+        function renderWeeklyPlanTable() {
+            const body = document.getElementById("weekly-plan-table-body");
+            if (!body) return;
+            body.innerHTML = "";
+
+            const filteredTasks = state.tasks.filter(t => t.weekNum === activeWeekFilterVal);
+
+            if (filteredTasks.length === 0) {
+                body.innerHTML = `<tr><td colspan="11" class="p-8 text-center text-slate-400 font-semibold text-xs">Không có dữ liệu nhiệm vụ cho tuần này. Nhấn nút "Tạo tuần" phía trên để khởi tạo.</td></tr>`;
+                return;
+            }
+
+            // Group tasks by date to calculate rows for date-spanning rowspan
+            const tasksByDate = {};
+            filteredTasks.forEach(t => {
+                if (!tasksByDate[t.date]) tasksByDate[t.date] = [];
+                tasksByDate[t.date].push(t);
+            });
+
+            const sortedDates = Object.keys(tasksByDate).sort();
+            let isFirstRowForDay = true;
+            let lastDateRendered = "";
+
+            filteredTasks.sort((a,b) => a.date.localeCompare(b.date));
+
+            filteredTasks.forEach((task, idx) => {
+                const tr = document.createElement("tr");
+                tr.className = "hover:bg-slate-50 transition text-xs border-b border-slate-200 relative";
+
+                // Map ca truc color row style
+                if (task.shift === "Ca A") tr.classList.add("shift-row-a");
+                else if (task.shift === "Ca B") tr.classList.add("shift-row-b");
+                else if (task.shift === "Ca C") tr.classList.add("shift-row-c");
+                else tr.classList.add("shift-row-n");
+
+                // Check first of new day for separator border line styling
+                if (idx > 0 && filteredTasks[idx-1].date !== task.date) {
+                    tr.classList.add("shift-separator");
+                }
+
+                // Render Day column span
+                let dayColHTML = "";
+                if (task.date !== lastDateRendered) {
+                    const rowSpanCount = tasksByDate[task.date].length;
+                    const displayD = new Date(task.date);
+                    const labelDay = displayD.toLocaleDateString("vi-VN", { weekday: 'long' });
+                    const labelDate = displayD.toLocaleDateString("vi-VN", { day: '2-digit', month: '2-digit' });
+
+                    dayColHTML = `
+                        <td class="p-3 text-center border-r border-slate-200 bg-slate-100/50 font-extrabold text-slate-700" rowspan="${rowSpanCount}">
+                            <div class="text-[11px] uppercase">${labelDay}</div>
+                            <div class="text-xs text-blue-600 mt-0.5">${labelDate}</div>
+                        </td>
+                    `;
+                    lastDateRendered = task.date;
+                }
+
+                // Photos section preview
+                let photosHTML = "";
+                if (task.photos && task.photos.length > 0) {
+                    task.photos.forEach((ph, pIdx) => {
+                        photosHTML += `
+                            <div class="relative group/photo w-8 h-8 rounded border overflow-hidden shadow-sm">
+                                <img src="${ph}" class="w-full h-full object-cover">
+                                <button onclick="deleteTaskPhoto('${task.id}', ${pIdx})" class="absolute inset-0 bg-black/65 text-white flex items-center justify-center text-[8px] opacity-0 group-hover/photo:opacity-100 transition duration-100">
+                                    <i class="fa-solid fa-trash"></i>
+                                </button>
+                            </div>
+                        `;
+                    });
+                }
+
+                // Render dynamic link list
+                let linkHTML = "";
+                if (task.sheetLinks && task.sheetLinks.length > 0) {
+                    task.sheetLinks.forEach((l, lIdx) => {
+                        linkHTML += `
+                            <div class="flex items-center gap-1.5 bg-indigo-50/50 hover:bg-indigo-100/70 border border-indigo-100 p-1.5 rounded-lg text-[10px] text-indigo-700 font-bold max-w-full">
+                                <a href="${l}" target="_blank" class="truncate flex items-center gap-1 flex-grow">
+                                    <i class="fa-solid fa-file-excel text-emerald-600 text-xs"></i> Link ${lIdx + 1}
+                                </a>
+                                <button onclick="deleteTaskLink('${task.id}', ${lIdx})" class="text-rose-500 hover:text-rose-700 text-xs font-black select-none">&times;</button>
+                            </div>
+                        `;
+                    });
+                }
+
+                // Options list of form templates
+                let templateDropdownHTML = `<option value="">-- Không cần --</option>`;
+                state.templates.forEach(tmp => {
+                    templateDropdownHTML += `<option value="${tmp.id}" ${task.formTemplateId === tmp.id ? 'selected' : ''}>${tmp.name}</option>`;
+                });
+
+                // Render action buttons for maintenance forms
+                let formExecutionControl = `
+                    <div class="flex flex-col gap-1 text-center justify-center items-center">
+                        <select onchange="updateTaskField('${task.id}', 'formTemplateId', this.value); renderWeeklyPlanTable();" class="p-1 border rounded bg-white text-[10px] w-full font-bold text-slate-700 outline-none">
+                            ${templateDropdownHTML}
+                        </select>
+                `;
+                if (task.formTemplateId) {
+                    if (task.formFilledId) {
+                        formExecutionControl += `
+                            <div class="flex gap-1 mt-1 justify-center">
+                                <button onclick="downloadFormPDF('${task.formFilledId}')" class="bg-rose-100 hover:bg-rose-200 text-rose-800 text-[9px] font-black px-2 py-1 rounded-lg flex items-center gap-1 shadow-sm border border-rose-200">
+                                    <i class="fa-solid fa-file-pdf"></i> Tải PDF
+                                </button>
+                                <button onclick="deleteFilledForm('${task.id}')" class="bg-slate-100 hover:bg-rose-100 text-slate-500 hover:text-rose-600 p-1 rounded-lg border" title="Xóa phiếu đã nộp">
+                                    <i class="fa-solid fa-eraser text-[10px]"></i>
+                                </button>
+                            </div>
+                        `;
+                    } else {
+                        formExecutionControl += `
+                            <button onclick="fillTaskForm('${task.id}')" class="bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black px-2.5 py-1 rounded-lg flex items-center gap-1 shadow-sm mt-1">
+                                <i class="fa-solid fa-file-signature"></i> Điền phiếu
+                            </button>
+                        `;
+                    }
+                }
+                formExecutionControl += `</div>`;
+
+                // Render dynamic co-dãn assignees badge selectors
+                let assigneesDisplayHTML = "";
+                if (task.assignees && task.assignees.length > 0) {
+                    task.assignees.forEach(name => {
+                        assigneesDisplayHTML += `
+                            <span class="bg-white/90 border text-[10px] font-bold px-2 py-0.5 rounded-md shadow-sm text-slate-700 inline-block m-0.5">
+                                <i class="fa-solid fa-user-circle text-blue-500 mr-1"></i> ${name}
+                            </span>
+                        `;
+                    });
+                } else {
+                    assigneesDisplayHTML = `<span class="text-slate-400 italic font-semibold text-[10px]">Chưa có người trực</span>`;
+                }
+
+                // Dropdown trigger list of checkboxes for multiple assignment
+                let checkboxDropdownOptionsHTML = "";
+                state.members.filter(m => m.role !== "Admin").forEach(m => {
+                    const isChecked = task.assignees && task.assignees.includes(m.fullname);
+                    checkboxDropdownOptionsHTML += `
+                        <label class="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-100 cursor-pointer text-xs font-bold text-slate-700">
+                            <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="updateTaskAssignee('${task.id}', '${m.fullname}', this.checked)" class="rounded text-blue-600 w-4 h-4">
+                            <span>${m.fullname}</span>
+                        </label>
+                    `;
+                });
+
+                tr.innerHTML = `
+                    ${dayColHTML}
+                    <td class="p-2 text-center font-bold text-slate-700 border-r">${task.shift}</td>
+                    <td class="p-2 border-r">
+                        <input type="text" value="${task.group}" onchange="updateTaskField('${task.id}', 'group', this.value)" class="bg-transparent border-b border-transparent hover:border-slate-300 focus:border-blue-500 outline-none w-full font-bold text-slate-700">
+                    </td>
+                    <td class="p-2 border-r">
+                        <textarea onchange="updateTaskField('${task.id}', 'area', this.value)" class="bg-transparent border-b border-transparent hover:border-slate-300 focus:border-blue-500 outline-none w-full font-bold text-slate-700 resize-none" rows="2">${task.area || ''}</textarea>
+                    </td>
+                    <td class="p-2 border-r">
+                        <textarea onchange="updateTaskField('${task.id}', 'content', this.value)" class="bg-transparent border-b border-transparent hover:border-slate-300 focus:border-blue-500 outline-none w-full font-bold text-slate-800 resize-none leading-relaxed" rows="3">${task.content || ''}</textarea>
+                    </td>
+                    <td class="p-2 border-r">
+                        <div class="flex flex-wrap gap-1.5 justify-center items-center">
+                            <div class="flex flex-wrap gap-1 justify-center">${photosHTML}</div>
+                            <label class="bg-slate-100 hover:bg-slate-200 text-slate-600 p-1.5 rounded-lg border cursor-pointer inline-flex items-center" title="Tải thêm ảnh">
+                                <i class="fa-solid fa-camera text-[11px]"></i>
+                                <input type="file" accept="image/*" class="hidden" onchange="uploadTaskPhoto('${task.id}', this)">
+                            </label>
+                        </div>
+                    </td>
+                    <td class="p-2 border-r">${formExecutionControl}</td>
+                    <td class="p-2 border-r bg-white/40">
+                        <div class="flex flex-col gap-1.5 min-h-[50px] relative">
+                            <!-- Visual co-dãn dynamic elements box -->
+                            <div class="flex flex-wrap max-w-full">${assigneesDisplayHTML}</div>
+                            
+                            <!-- Trigger select multiasign dropdown -->
+                            <button onclick="event.stopPropagation(); document.getElementById('assignee-dropdown-${task.id}').classList.toggle('hidden')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 border font-extrabold text-[10px] py-1 px-2 rounded-lg flex items-center justify-center gap-1 mt-auto">
+                                <i class="fa-solid fa-users-cog"></i> Phân việc
+                            </button>
+                            
+                            <!-- Custom Checklist Dropdown Popup -->
+                            <div id="assignee-dropdown-${task.id}" class="hidden absolute top-full left-0 z-30 bg-white border border-slate-200 shadow-xl rounded-xl p-2 w-52 mt-1 flex flex-col gap-1 text-left">
+                                <div class="text-[9px] font-bold text-slate-400 uppercase tracking-wider px-2 border-b pb-1">Chọn thành viên trực</div>
+                                <div class="max-h-40 overflow-y-auto">${checkboxDropdownOptionsHTML}</div>
+                                <button onclick="closeAssigneeDropdown('${task.id}', event)" class="bg-blue-600 hover:bg-blue-700 text-white font-bold text-[10px] py-1.5 rounded-lg shadow-md text-center mt-1">Xác nhận</button>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="p-2 text-center border-r">
+                        <select onchange="updateTaskProgress('${task.id}', this.value)" class="p-1.5 border rounded-lg font-black text-[11px] outline-none ${task.progress === 'Hoàn thành' ? 'bg-emerald-100 text-emerald-800' : task.progress === 'Đang thực hiện' ? 'bg-blue-100 text-blue-800' : task.progress === 'Làm lại' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800'}">
+                            <option value="Đang thực hiện" ${task.progress === 'Đang thực hiện' ? 'selected' : ''}>Đang thực hiện</option>
+                            <option value="Hoàn thành" ${task.progress === 'Hoàn thành' ? 'selected' : ''}>Hoàn thành</option>
+                            <option value="Làm lại" ${task.progress === 'Làm lại' ? 'selected' : ''}>Làm lại</option>
+                            <option value="Bàn giao" ${task.progress === 'Bàn giao' ? 'selected' : ''}>Bàn giao</option>
+                        </select>
+                    </td>
+                    <td class="p-2 border-r bg-slate-100/20">
+                        <div class="flex flex-col gap-1.5">
+                            <textarea onchange="updateTaskField('${task.id}', 'note', this.value)" placeholder="Ghi chú kỹ thuật..." class="w-full bg-transparent border-b border-transparent hover:border-slate-300 focus:border-blue-500 outline-none text-[11px] font-bold resize-none leading-relaxed" rows="2" style="color: ${task.noteColor || '#1e293b'}">${task.note || ''}</textarea>
+                            <div class="flex justify-between items-center mt-1">
+                                <div class="flex gap-1">
+                                    <span onclick="changeTaskNoteColor('${task.id}', '#16a34a')" class="w-3.5 h-3.5 rounded-full bg-emerald-600 cursor-pointer border border-white hover:scale-110 shadow-sm"></span>
+                                    <span onclick="changeTaskNoteColor('${task.id}', '#dc2626')" class="w-3.5 h-3.5 rounded-full bg-rose-600 cursor-pointer border border-white hover:scale-110 shadow-sm"></span>
+                                    <span onclick="changeTaskNoteColor('${task.id}', '#2563eb')" class="w-3.5 h-3.5 rounded-full bg-blue-600 cursor-pointer border border-white hover:scale-110 shadow-sm"></span>
+                                    <span onclick="changeTaskNoteColor('${task.id}', '#1e293b')" class="w-3.5 h-3.5 rounded-full bg-slate-800 cursor-pointer border border-white hover:scale-110 shadow-sm"></span>
+                                </div>
+                                <button onclick="promptAddGSheetLink('${task.id}')" class="text-[10px] text-indigo-600 hover:text-indigo-800 font-extrabold flex items-center gap-0.5" title="Chèn thêm liên kết Google Sheet">
+                                    <i class="fa-solid fa-link"></i> + Link Sheet
+                                </button>
+                            </div>
+                            <!-- Dynamic Excel List Container -->
+                            <div class="flex flex-col gap-1 mt-1.5 max-h-24 overflow-y-auto">${linkHTML}</div>
+                        </div>
+                    </td>
+                    <td class="p-2 text-center">
+                        <div class="flex justify-center items-center gap-1.5">
+                            <button onclick="insertRowBelow('${task.id}')" class="text-blue-500 hover:text-blue-700" title="Chèn thêm dòng bên dưới"><i class="fa-solid fa-plus-circle text-sm"></i></button>
+                            <button onclick="deleteTaskRow('${task.id}')" class="text-rose-500 hover:text-rose-700" title="Xóa dòng"><i class="fa-solid fa-trash-can text-sm"></i></button>
+                        </div>
+                    </td>
+                `;
+                body.appendChild(tr);
+            });
+        }
+
+        function closeAssigneeDropdown(taskId, event) {
+            if (event) event.stopPropagation();
+            const dropdown = document.getElementById(`assignee-dropdown-${taskId}`);
+            if (dropdown) dropdown.classList.add("hidden");
+            renderWeeklyPlanTable();
+        }
+
+        document.addEventListener("click", function() {
+            document.querySelectorAll("[id^='assignee-dropdown-']").forEach(d => d.classList.add("hidden"));
+        });
+
+        function promptAddGSheetLink(taskId) {
+            const task = state.tasks.find(t => t.id === taskId);
+            if (task) {
+                const url = prompt("Nhập đường dẫn URL Google Sheet mới:");
+                if (url) {
+                    if (!task.sheetLinks) task.sheetLinks = [];
+                    task.sheetLinks.push(url);
+                    saveState();
+                    renderWeeklyPlanTable();
+                    showCustomToast("Đã chèn thêm liên kết thành công!", "success");
+                    logAction("Chèn liên kết", `Đã thêm liên kết Google Sheet mới cho Task ID: ${taskId}`);
+                }
+            }
+        }
+
+        function deleteTaskLink(taskId, linkIdx) {
+            const task = state.tasks.find(t => t.id === taskId);
+            if (task && task.sheetLinks) {
+                task.sheetLinks.splice(linkIdx, 1);
+                saveState();
+                renderWeeklyPlanTable();
+                showCustomToast("Đã xóa liên kết!", "info");
+            }
+        }
+
+        function initSignaturePads() {
+            const types = ['tech', 'duty', 'thirdparty'];
+            types.forEach(type => {
+                const canvas = document.getElementById(`signature-${type}`);
+                if (!canvas) return;
+                const ctx = canvas.getContext('2d');
+                sigCanvases[type] = canvas;
+                sigCtxs[type] = ctx;
+
+                ctx.strokeStyle = "#0f172a";
+                ctx.lineWidth = 2.5;
+                ctx.lineJoin = "round";
+                ctx.lineCap = "round";
+
+                let drawing = false;
+                let lastX = 0, lastY = 0;
+
+                function getPos(e) {
+                    const rect = canvas.getBoundingClientRect();
+                    const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+                    const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+                    return {
+                        x: clientX - rect.left,
+                        y: clientY - rect.top
+                    };
+                }
+
+                canvas.addEventListener('mousedown', (e) => {
+                    drawing = true;
+                    const pos = getPos(e);
+                    lastX = pos.x; lastY = pos.y;
+                });
+                canvas.addEventListener('mousemove', (e) => {
+                    if (!drawing) return;
+                    const pos = getPos(e);
+                    ctx.beginPath();
+                    ctx.moveTo(lastX, lastY);
+                    ctx.lineTo(pos.x, pos.y);
+                    ctx.stroke();
+                    lastX = pos.x; lastY = pos.y;
+                });
+                window.addEventListener('mouseup', () => drawing = false);
+
+                canvas.addEventListener('touchstart', (e) => {
+                    drawing = true;
+                    const pos = getPos(e);
+                    lastX = pos.x; lastY = pos.y;
+                    e.preventDefault();
+                }, { passive: false });
+                canvas.addEventListener('touchmove', (e) => {
+                    if (!drawing) return;
+                    const pos = getPos(e);
+                    ctx.beginPath();
+                    ctx.moveTo(lastX, lastY);
+                    ctx.lineTo(pos.x, pos.y);
+                    ctx.stroke();
+                    lastX = pos.x; lastY = pos.y;
+                    e.preventDefault();
+                }, { passive: false });
+                canvas.addEventListener('touchend', () => drawing = false);
+            });
+        }
+
+        function clearSig(type) {
+            const canvas = sigCanvases[type];
+            const ctx = sigCtxs[type];
+            if (canvas && ctx) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+            }
+        }
+
+        function evaluateKPIStats() {
+            const stats = {};
+            state.members.filter(m => m.user !== "admin").forEach(m => {
+                stats[m.fullname] = {
+                    fullname: m.fullname,
+                    role: m.role,
+                    title: m.title,
+                    assigned: 0,
+                    completed: 0,
+                    scoreSum: 0,
+                    attitudeGrades: m.attitudeGrades || { supervisor: 5, attendance: 5, initiative: 5, feedback: 5, professionalism: 5 },
+                    note: m.note || "",
+                    shiftCompleted: {}
+                };
+            });
+
+            state.tasks.forEach(task => {
+                if (task.assignees) {
+                    task.assignees.forEach(name => {
+                        if (stats[name]) {
+                            stats[name].assigned++;
+                            let points = 0;
+                            if (task.progress === "Hoàn thành") {
+                                points = 100;
+                                stats[name].completed++;
+                                stats[name].shiftCompleted[task.shift] = (stats[name].shiftCompleted[task.shift] || 0) + 1;
+                            }
+                            else if (task.progress === "Đang thực hiện") points = 50;
+                            else if (task.progress === "Làm lại") points = 20;
+                            else if (task.progress === "Bàn giao") points = 0;
+
+                            stats[name].scoreSum += points;
+                        }
+                    });
+                }
+            });
+
+            const list = [];
+            for (let name in stats) {
+                const item = stats[name];
+                item.kpiPercent = item.assigned > 0 ? (item.scoreSum / item.assigned) : 100;
+                
+                const att = item.attitudeGrades;
+                item.attitudeAverage = (parseFloat(att.supervisor) + parseFloat(att.attendance) + parseFloat(att.initiative) + parseFloat(att.feedback) + parseFloat(att.professionalism)) / 5;
+                list.push(item);
+            }
+            return list;
+        }
+
+        function renderKpiDashboard() {
+            const list = evaluateKPIStats();
+
+            function getBestOfTitle(title) {
+                const sub = list.filter(item => item.title === title);
+                if (sub.length === 0) return { fullname: "Chưa có", kpiPercent: 0, attitudeAverage: 0 };
+                sub.sort((a,b) => (b.kpiPercent + b.attitudeAverage * 20) - (a.kpiPercent + a.attitudeAverage * 20));
+                return sub[0];
+            }
+
+            const bestDuty = getBestOfTitle("Duty Engineer");
+            const bestTech = getBestOfTitle("Technician");
+            const bestCarp = getBestOfTitle("Carpenter");
+
+            document.getElementById("best-duty-name").innerText = bestDuty.fullname;
+            document.getElementById("best-duty-score").innerText = `KPI: ${bestDuty.kpiPercent ? bestDuty.kpiPercent.toFixed(0) : 0}% | Thái độ: ${bestDuty.attitudeAverage ? bestDuty.attitudeAverage.toFixed(1) : 0}/5`;
+
+            document.getElementById("best-tech-name").innerText = bestTech.fullname;
+            document.getElementById("best-tech-score").innerText = `KPI: ${bestTech.kpiPercent ? bestTech.kpiPercent.toFixed(0) : 0}% | Thái độ: ${bestTech.attitudeAverage ? bestTech.attitudeAverage.toFixed(1) : 0}/5`;
+
+            document.getElementById("best-carp-name").innerText = bestCarp.fullname;
+            document.getElementById("best-carp-score").innerText = `KPI: ${bestCarp.kpiPercent ? bestCarp.kpiPercent.toFixed(0) : 0}% | Thái độ: ${bestCarp.attitudeAverage ? bestCarp.attitudeAverage.toFixed(1) : 0}/5`;
+
+            renderGroupsAttitudeTables(list);
+            renderKpiMembersAccordion(list);
+            initKPICharts(list);
+        }
+
+        // Mixed (Bar + Line) rankings sorted from highest to lowest % completion
+        function initKPICharts(list) {
+            const dutyMembers = list.filter(m => m.title === "Duty Engineer");
+            const techMembers = list.filter(m => m.title === "Technician");
+            const carpMembers = list.filter(m => m.title === "Carpenter");
+
+            const buildMixedChartConfig = (members) => {
+                // Sắp xếp thứ hạng toàn bộ nhân viên từ cao tới thấp (Theo KPI %)
+                const sortedMembers = [...members].sort((a, b) => b.kpiPercent - a.kpiPercent);
+
+                return {
+                    type: 'bar',
+                    data: {
+                        labels: sortedMembers.map(m => m.fullname),
+                        datasets: [
+                            {
+                                type: 'bar',
+                                label: 'Công việc hoàn thành (Cột)',
+                                data: sortedMembers.map(m => m.completed),
+                                backgroundColor: 'rgba(37, 99, 235, 0.75)',
+                                borderColor: 'rgb(37, 99, 235)',
+                                borderWidth: 1.5,
+                                borderRadius: 6,
+                                yAxisID: 'y'
+                            },
+                            {
+                                type: 'line',
+                                label: '% Hoàn thành KPI (Đường)',
+                                data: sortedMembers.map(m => m.kpiPercent),
+                                borderColor: 'rgb(245, 158, 11)',
+                                backgroundColor: 'rgba(245, 158, 11, 0.2)',
+                                borderWidth: 3,
+                                tension: 0.3,
+                                fill: false,
+                                pointBackgroundColor: 'rgb(245, 158, 11)',
+                                pointRadius: 4,
+                                yAxisID: 'y1'
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                type: 'linear',
+                                display: true,
+                                position: 'left',
+                                title: {
+                                    display: true,
+                                    text: 'Số lượng công việc',
+                                    font: { size: 9, weight: 'bold' }
+                                },
+                                beginAtZero: true,
+                                ticks: {
+                                    stepSize: 1
+                                }
+                            },
+                            y1: {
+                                type: 'linear',
+                                display: true,
+                                position: 'right',
+                                title: {
+                                    display: true,
+                                    text: 'Tỷ lệ % KPI',
+                                    font: { size: 9, weight: 'bold' }
+                                },
+                                min: 0,
+                                max: 100,
+                                grid: {
+                                    drawOnChartArea: false
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: { boxWidth: 10, font: { size: 9, weight: 'bold' } }
+                            }
+                        }
+                    }
+                };
+            };
+
+            if (dutyChartInstance) dutyChartInstance.destroy();
+            if (techChartInstance) techChartInstance.destroy();
+            if (carpenterChartInstance) carpenterChartInstance.destroy();
+
+            const ctxDuty = document.getElementById("kpiDutyChart");
+            if (ctxDuty) {
+                dutyChartInstance = new Chart(ctxDuty.getContext("2d"), buildMixedChartConfig(dutyMembers));
+            }
+
+            const ctxTech = document.getElementById("kpiTechChart");
+            if (ctxTech) {
+                techChartInstance = new Chart(ctxTech.getContext("2d"), buildMixedChartConfig(techMembers));
+            }
+
+            const ctxCarp = document.getElementById("kpiCarpenterChart");
+            if (ctxCarp) {
+                carpenterChartInstance = new Chart(ctxCarp.getContext("2d"), buildMixedChartConfig(carpMembers));
+            }
+        }
+
+        function renderGroupsAttitudeTables(list) {
+            const dutyTable = document.getElementById("kpi-group-duty");
+            const techTable = document.getElementById("kpi-group-tech");
+            const carpTable = document.getElementById("kpi-group-carpenter");
+
+            if (!dutyTable || !techTable || !carpTable) return;
+
+            dutyTable.innerHTML = "";
+            techTable.innerHTML = "";
+            carpTable.innerHTML = "";
+
+            const isAdmin = state.currentUser && state.currentUser.role === "Admin";
+
+            list.forEach(item => {
+                let targetTable = techTable;
+                if (item.title === "Duty Engineer") targetTable = dutyTable;
+                else if (item.title === "Carpenter") targetTable = carpTable;
+
+                const tr = document.createElement("tr");
+                tr.className = "border-b hover:bg-slate-50 text-[11px]";
+
+                let attControl = `<span class="font-extrabold text-amber-500">${item.attitudeAverage.toFixed(1)}/5</span>`;
+                if (isAdmin) {
+                    attControl = `
+                        <button onclick="openAttitudeGraderModal('${item.fullname}')" class="bg-amber-100 hover:bg-amber-200 text-amber-800 font-black px-2 py-0.5 rounded border border-amber-300">
+                            ${item.attitudeAverage.toFixed(1)} <i class="fa-solid fa-pen text-[9px] ml-0.5"></i>
+                        </button>
+                    `;
+                }
+
+                let noteInpHtml = `<span>${item.note || ''}</span>`;
+                if (isAdmin) {
+                    noteInpHtml = `
+                        <input type="text" value="${item.note || ''}" 
+                            onchange="updateMemberNote('${item.fullname}', this.value)" 
+                            placeholder="Ghi chú đánh giá..." 
+                            class="w-full bg-transparent border-b border-transparent focus:border-slate-300 text-[11px] font-semibold outline-none">
+                    `;
+                }
+
+                tr.innerHTML = `
+                    <td class="p-2 font-bold text-slate-800">${item.fullname}</td>
+                    <td class="p-2 text-center font-extrabold text-blue-600">${item.kpiPercent.toFixed(0)}%</td>
+                    <td class="p-2 text-center">${attControl}</td>
+                    <td class="p-2">${noteInpHtml}</td>
+                `;
+
+                targetTable.appendChild(tr);
+            });
+        }
+
+        function renderKpiMembersAccordion(list) {
+            const listDiv = document.getElementById("members-list-selection-kpi");
+            if (!listDiv) return;
+            listDiv.innerHTML = "";
+
+            list.forEach(item => {
+                const isSelected = selectedKpiMemberFullname === item.fullname;
+                const btn = document.createElement("button");
+                btn.type = "button";
+                btn.onclick = () => {
+                    selectedKpiMemberFullname = item.fullname;
+                    renderKpiMembersAccordion(list);
+                    renderSelectedMemberKpiTasks();
+                };
+                btn.className = `w-full text-left p-2.5 rounded-xl transition font-bold text-xs flex justify-between items-center ${isSelected ? 'bg-indigo-600 text-white shadow' : 'bg-slate-50 hover:bg-slate-100 text-slate-700'}`;
+                btn.innerHTML = `
+                    <span>${item.fullname}</span>
+                    <span class="${isSelected ? 'text-indigo-200' : 'text-slate-400'} text-[10px]">${item.title}</span>
+                `;
+                listDiv.appendChild(btn);
+            });
+
+            if (!selectedKpiMemberFullname && list.length > 0) {
+                selectedKpiMemberFullname = list[0].fullname;
+                renderKpiMembersAccordion(list);
+                renderSelectedMemberKpiTasks();
+            }
+        }
+
+        function renderSelectedMemberKpiTasks() {
+            const body = document.getElementById("monthly-tasks-details-table");
+            if (!body) return;
+            body.innerHTML = "";
+
+            const memberTasks = state.tasks.filter(t => t.assignees && t.assignees.includes(selectedKpiMemberFullname));
+
+            if (memberTasks.length === 0) {
+                body.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-400 font-semibold">Nhân viên này chưa được phân công công việc nào trong tháng</td></tr>`;
+                return;
+            }
+
+            memberTasks.forEach(t => {
+                const tr = document.createElement("tr");
+                tr.className = "border-b text-xs hover:bg-slate-50";
+                tr.innerHTML = `
+                    <td class="p-2.5 font-bold text-slate-500">${t.date}</td>
+                    <td class="p-2.5 font-semibold text-center">${t.shift}</td>
+                    <td class="p-2.5 text-slate-600">${t.area || ''}</td>
+                    <td class="p-2.5 font-bold text-slate-800">${t.content}</td>
+                    <td class="p-2.5 text-center">
+                        <span class="bg-blue-100 text-blue-800 text-[10px] font-black px-2 py-0.5 rounded-full">${t.progress}</span>
+                    </td>
+                `;
+                body.appendChild(tr);
+            });
+        }
+
+        function downloadSelectedMemberMonthlyTasks() {
+            if (!selectedKpiMemberFullname) {
+                showCustomToast("Vui lòng chọn một nhân viên bên trái trước!", "warning");
+                return;
+            }
+
+            const memberTasks = state.tasks.filter(t => t.assignees && t.assignees.includes(selectedKpiMemberFullname));
+
+            if (memberTasks.length === 0) {
+                showCustomToast("Nhân viên này chưa có lịch sử công việc nào để xuất!", "warning");
+                return;
+            }
+
+            const rows = memberTasks.map(t => ({
+                "Ngày thực hiện": t.date,
+                "Ca trực": t.shift,
+                "Khu vực": t.area || "",
+                "Nội dung công việc": t.content,
+                "Trạng thái": t.progress,
+                "Ghi chú chi tiết": t.note || ""
+            }));
+
+            const worksheet = XLSX.utils.json_to_sheet(rows);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "LichSuCongViec");
+            
+            const fileName = `Lich_Su_Cong_Viec_${selectedKpiMemberFullname.replace(/\s+/g, '_')}.xlsx`;
+            XLSX.writeFile(workbook, fileName);
+            showCustomToast(`Đã tải xuống tệp Excel chi tiết của ${selectedKpiMemberFullname}!`, "success");
+            logAction("Xuất Excel cá nhân", `Xuất lịch sử công việc chi tiết của ${selectedKpiMemberFullname}`);
+        }
+
+        let activeGradingMember = null;
+        function openAttitudeGraderModal(fullname) {
+            const m = state.members.find(x => x.fullname === fullname);
+            if (!m) return;
+            activeGradingMember = m;
+
+            const grades = m.attitudeGrades || { supervisor: 5, attendance: 5, initiative: 5, feedback: 5, professionalism: 5 };
+
+            const modal = document.createElement("div");
+            modal.id = "attitude-grader-modal";
+            modal.className = "fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4";
+            modal.innerHTML = `
+                <div class="bg-white rounded-3xl w-full max-w-sm p-6 space-y-4 shadow-2xl">
+                    <div class="flex justify-between items-center border-b pb-2">
+                        <h3 class="font-black text-slate-900 text-sm">Chấm điểm thái độ: ${m.fullname}</h3>
+                        <button onclick="this.closest('#attitude-grader-modal').remove()" class="text-slate-400 text-lg">&times;</button>
+                    </div>
+                    <div class="space-y-3 text-xs">
+                        <div>
+                            <div class="flex justify-between font-bold mb-0.5">
+                                <span>Thái độ với giám sát</span>
+                                <span id="val-g1" class="text-indigo-600">${grades.supervisor}/5</span>
+                            </div>
+                            <input type="range" min="1" max="5" step="0.5" value="${grades.supervisor}" id="grade-g1" class="w-full" oninput="document.getElementById('val-g1').innerText=this.value+'/5'">
+                        </div>
+                        <div>
+                            <div class="flex justify-between font-bold mb-0.5">
+                                <span>Chuyên cần</span>
+                                <span id="val-g2" class="text-indigo-600">${grades.attendance}/5</span>
+                            </div>
+                            <input type="range" min="1" max="5" step="0.5" value="${grades.attendance}" id="grade-g2" class="w-full" oninput="document.getElementById('val-g2').innerText=this.value+'/5'">
+                        </div>
+                        <div>
+                            <div class="flex justify-between font-bold mb-0.5">
+                                <span>Sáng kiến</span>
+                                <span id="val-g3" class="text-indigo-600">${grades.initiative}/5</span>
+                            </div>
+                            <input type="range" min="1" max="5" step="0.5" value="${grades.initiative}" id="grade-g3" class="w-full" oninput="document.getElementById('val-g3').innerText=this.value+'/5'">
+                        </div>
+                        <div>
+                            <div class="flex justify-between font-bold mb-0.5">
+                                <span>Phản hồi tốt từ khách</span>
+                                <span id="val-g4" class="text-indigo-600">${grades.feedback}/5</span>
+                            </div>
+                            <input type="range" min="1" max="5" step="0.5" value="${grades.feedback}" id="grade-g4" class="w-full" oninput="document.getElementById('val-g4').innerText=this.value+'/5'">
+                        </div>
+                        <div>
+                            <div class="flex justify-between font-bold mb-0.5">
+                                <span>Tác phong gọn gàng & Đúng giờ</span>
+                                <span id="val-g5" class="text-indigo-600">${grades.professionalism}/5</span>
+                            </div>
+                            <input type="range" min="1" max="5" step="0.5" value="${grades.professionalism}" id="grade-g5" class="w-full" oninput="document.getElementById('val-g5').innerText=this.value+'/5'">
+                        </div>
+                    </div>
+                    <div class="flex justify-end gap-2 pt-2 border-t">
+                        <button onclick="this.closest('#attitude-grader-modal').remove()" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-xs font-bold rounded-lg text-slate-600">Đóng</button>
+                        <button onclick="saveAttitudeGrades()" class="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg">Lưu điểm</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        function saveAttitudeGrades() {
+            if (!activeGradingMember) return;
+            const supervisor = parseFloat(document.getElementById("grade-g1").value);
+            const attendance = parseFloat(document.getElementById("grade-g2").value);
+            const initiative = parseFloat(document.getElementById("grade-g3").value);
+            const feedback = parseFloat(document.getElementById("grade-g4").value);
+            const professionalism = parseFloat(document.getElementById("grade-g5").value);
+
+            activeGradingMember.attitudeGrades = { supervisor, attendance, initiative, feedback, professionalism };
+            saveState();
+            document.getElementById("attitude-grader-modal").remove();
+            renderKpiDashboard();
+            showCustomToast("Đã lưu chấm điểm năng lực thành công!", "success");
+            logAction("Chấm điểm thái độ", `Chấm điểm thái độ cho nhân viên: ${activeGradingMember.fullname}`);
+        }
+
+        function renderFolderTree() {
+            const container = document.getElementById("folders-tree-container");
+            if (!container) return;
+            container.innerHTML = "";
+
+            // Render predefined main folders
+            predefinedSystems.forEach(sys => {
+                const sysDiv = document.createElement("div");
+                sysDiv.className = "space-y-1";
+
+                const isSelected = state.currentFolder === sys;
+                sysDiv.innerHTML = `
+                    <div onclick="selectFolder('${sys}')" class="folder-item flex items-center justify-between p-2 rounded-xl cursor-pointer transition ${isSelected ? 'bg-blue-50 text-blue-700 font-extrabold border-l-4 border-blue-600' : 'text-slate-600 font-semibold'}">
+                        <span class="text-xs flex items-center gap-1.5">
+                            <i class="fa-solid fa-folder text-amber-500"></i> ${sys}
+                        </span>
+                        <span class="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full font-bold">
+                            ${state.formSubmissions.filter(s => {
+                                const tmpl = state.templates.find(t => t.id === s.templateId);
+                                return tmpl && tmpl.system === sys;
+                            }).length}
+                        </span>
+                    </div>
+                `;
+
+                // Render custom subfolders under this predefined system
+                const subFolders = (state.folders || []).filter(f => f.parent === sys);
+                if (subFolders.length > 0) {
+                    const subContainer = document.createElement("div");
+                    subContainer.className = "pl-4 border-l border-slate-200 ml-3 space-y-1";
+                    subFolders.forEach(sub => {
+                        const isSubSelected = state.currentFolder === sub.name;
+                        subContainer.innerHTML += `
+                            <div onclick="selectFolder('${sub.name}')" class="folder-item flex items-center justify-between p-1.5 rounded-lg cursor-pointer transition text-[11px] ${isSubSelected ? 'bg-indigo-50 text-indigo-700 font-extrabold' : 'text-slate-500 font-medium'}">
+                                <span class="flex items-center gap-1">
+                                    <i class="fa-solid fa-folder-open text-amber-400"></i> ${sub.name}
+                                </span>
+                                <button onclick="deleteSubFolder('${sub.id}', event)" class="text-rose-400 hover:text-rose-600"><i class="fa-solid fa-times"></i></button>
+                            </div>
+                        `;
+                    });
+                    sysDiv.appendChild(subContainer);
+                }
+
+                container.appendChild(sysDiv);
+            });
+
+            // Render custom root folders (folders with no parent or parent is 'root')
+            const rootCustomFolders = (state.folders || []).filter(f => !f.parent || f.parent === 'root');
+            rootCustomFolders.forEach(folder => {
+                const isSelected = state.currentFolder === folder.name;
+                const folderDiv = document.createElement("div");
+                folderDiv.className = "space-y-1";
+                folderDiv.innerHTML = `
+                    <div onclick="selectFolder('${folder.name}')" class="folder-item flex items-center justify-between p-2 rounded-xl cursor-pointer transition ${isSelected ? 'bg-blue-50 text-blue-700 font-extrabold border-l-4 border-blue-600' : 'text-slate-600 font-semibold'}">
+                        <span class="text-xs flex items-center gap-1.5">
+                            <i class="fa-solid fa-folder text-indigo-500"></i> ${folder.name}
+                        </span>
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full font-bold">
+                                ${state.formSubmissions.filter(s => {
+                                    const tmpl = state.templates.find(t => t.id === s.templateId);
+                                    return tmpl && tmpl.system === folder.name;
+                                }).length}
+                            </span>
+                            <button onclick="deleteSubFolder('${folder.id}', event)" class="text-rose-400 hover:text-rose-600 text-[10px]"><i class="fa-solid fa-trash-can"></i></button>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(folderDiv);
+            });
+        }
+
+        function selectFolder(name) {
+            state.currentFolder = name;
+            saveState();
+            renderFolderTree();
+            document.getElementById("current-selected-folder-title").innerText = name;
+            renderSubmittedFormsList();
+        }
+
+        function renderMaintenanceForms() {
+            renderFolderTree();
+
+            // Populate system template category dropdown with predefined + custom folders
+            const sysSelect = document.getElementById("new-template-system");
+            if (sysSelect) {
+                sysSelect.innerHTML = "";
+                // 1. Predefined categories
+                predefinedSystems.forEach(sys => {
+                    sysSelect.innerHTML += `<option value="${sys}">${sys}</option>`;
+                });
+                // 2. Custom created folders
+                if (state.folders) {
+                    state.folders.forEach(f => {
+                        sysSelect.innerHTML += `<option value="${f.name}">${f.name}</option>`;
+                    });
+                }
+            }
+
+            const qWorkspace = document.getElementById("new-template-questions");
+            if (qWorkspace) {
+                qWorkspace.innerHTML = "";
+                newTmplQuestions.forEach((q, idx) => {
+                    const itemDiv = document.createElement("div");
+                    itemDiv.className = "bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3 relative shadow-sm";
+                    
+                    let optionsInputsHTML = "";
+                    if (q.options && q.options.length > 0) {
+                        q.options.forEach((opt, optIdx) => {
+                            optionsInputsHTML += `
+                                <div class="flex items-center gap-2">
+                                    <span class="text-[10px] text-slate-400 font-extrabold">${optIdx + 1}</span>
+                                    <input type="text" value="${opt}" oninput="updateQuestionOptionText(${idx}, ${optIdx}, this.value)" 
+                                        class="p-1 border rounded text-xs bg-white text-slate-800 font-bold focus:ring-1 focus:ring-indigo-500 outline-none w-full" placeholder="Ví dụ: YES, NO, ĐẠT...">
+                                    <button onclick="removeQuestionOption(${idx}, ${optIdx})" class="text-rose-500 hover:text-rose-700 font-bold text-xs px-1">&times;</button>
+                                </div>
+                            `;
+                        });
+                    } else {
+                        optionsInputsHTML = `<p class="text-[10px] text-slate-400 italic">Chưa có phương án lựa chọn (Mặc định sẽ là ô viết chữ tự do khi điền phiếu).</p>`;
+                    }
+
+                    itemDiv.innerHTML = `
+                        <div class="flex flex-wrap justify-between items-center border-b pb-2 gap-2 text-xs font-semibold">
+                            <span class="text-indigo-600 font-black flex items-center gap-1.5">
+                                <i class="fa-solid fa-check-double"></i> Hạng mục kiểm tra ${idx + 1}
+                            </span>
+                            <div class="flex items-center gap-3">
+                                <label class="flex items-center gap-1 cursor-pointer">
+                                    <input type="checkbox" ${q.required ? 'checked' : ''} onchange="updateQuestionField(${idx}, 'required', this.checked)" class="rounded text-blue-600">
+                                    <span class="text-[10px] font-bold text-slate-500">Bắt buộc điền</span>
+                                </label>
+                                <button onclick="removeNewTmplQuestion(${idx})" class="text-rose-500 hover:text-rose-700 text-[10px] font-black flex items-center gap-1">
+                                    <i class="fa-solid fa-trash"></i> Xóa
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="space-y-2">
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-400 mb-0.5 uppercase">Tên câu hỏi (Question)</label>
+                                <input type="text" value="${q.question || ''}" oninput="updateQuestionField(${idx}, 'question', this.value)" 
+                                    class="w-full p-2 border rounded-xl bg-white font-extrabold text-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Nhập tiêu đề hoặc bước kiểm tra...">
+                            </div>
+
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-400 mb-0.5 uppercase">Mô tả quy trình kiểm tra (Description - Hỗ trợ xuống dòng)</label>
+                                <textarea oninput="updateQuestionField(${idx}, 'description', this.value)" 
+                                    class="w-full p-2 border rounded-xl bg-white font-medium text-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none resize-y" rows="3" placeholder="Nhập nội dung các bước thực hiện chi tiết...">${q.description || ''}</textarea>
+                            </div>
+
+                            <div class="space-y-1.5">
+                                <div class="flex justify-between items-center">
+                                    <label class="block text-[10px] font-bold text-indigo-500 uppercase">Tự cấu hình câu trả lời (Options)</label>
+                                    <button onclick="addQuestionOption(${idx})" class="text-indigo-600 hover:text-indigo-800 font-extrabold text-[10px] flex items-center gap-0.5">
+                                        <i class="fa-solid fa-plus"></i> + Thêm lựa chọn
+                                    </button>
+                                </div>
+                                <div class="grid grid-cols-2 gap-2 bg-slate-100/50 p-2 rounded-xl">
+                                    ${optionsInputsHTML}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    qWorkspace.appendChild(itemDiv);
+                });
+            }
+
+            const listContainer = document.getElementById("templates-list");
+            if (listContainer) {
+                listContainer.innerHTML = "";
+                state.templates.forEach(t => {
+                    const div = document.createElement("div");
+                    div.className = "bg-slate-50 p-3.5 rounded-2xl border border-slate-200 flex justify-between items-center text-xs shadow-sm hover:border-slate-300 transition";
+                    div.innerHTML = `
+                        <div class="flex-grow">
+                            <h4 class="font-extrabold text-slate-800">${t.name}</h4>
+                            <span class="text-[10px] font-bold text-slate-400">Mã: ${t.code} | Hệ: ${t.system}</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button onclick="previewFormTemplate('${t.id}')" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-extrabold text-[10px] px-2.5 py-1.5 rounded-xl border border-indigo-100 flex items-center gap-1 transition" title="Xem trước mẫu biểu">
+                                <i class="fa-solid fa-eye"></i> Xem trước
+                            </button>
+                            <button onclick="deleteFormTemplate('${t.id}')" class="text-rose-500 hover:text-rose-700 p-1.5 transition" title="Xóa mẫu">
+                                <i class="fa-solid fa-trash-can text-sm"></i>
+                            </button>
+                        </div>
+                    `;
+                    listContainer.appendChild(div);
+                });
+            }
+
+            renderSubmittedFormsList();
+        }
+
+        function previewFormTemplate(tmplId) {
+            const tmpl = state.templates.find(t => t.id === tmplId);
+            if (!tmpl) return;
+
+            document.getElementById("preview-form-title").innerText = `Xem trước: ${tmpl.name} [${tmpl.code}]`;
+            const content = document.getElementById("preview-form-content");
+            content.innerHTML = "";
+
+            tmpl.questions.forEach((q, qidx) => {
+                const itemDiv = document.createElement("div");
+                itemDiv.className = "p-3.5 bg-slate-50 border rounded-2xl space-y-2";
+                
+                let answerInputHTML = "";
+                if (q.options && q.options.length > 0) {
+                    answerInputHTML = `<div class="flex flex-wrap gap-2">`;
+                    q.options.forEach((opt) => {
+                        answerInputHTML += `
+                            <span class="bg-white border px-2.5 py-1 rounded-xl font-bold text-[10px] text-slate-500 shadow-sm">
+                                <i class="fa-regular fa-circle mr-1"></i> ${opt}
+                            </span>
+                        `;
+                    });
+                    answerInputHTML += `</div>`;
+                } else {
+                    answerInputHTML = `
+                        <div class="p-2 border rounded-xl bg-slate-100 text-[10px] text-slate-400 italic">Trường điền dữ liệu tự do</div>
+                    `;
+                }
+
+                itemDiv.innerHTML = `
+                    <div class="font-bold text-slate-800 text-xs">
+                        ${qidx + 1}. ${q.question} ${q.required ? '<span class="text-rose-500 font-bold">*</span>' : ''}
+                    </div>
+                    ${q.description ? `
+                        <div class="text-[10px] text-slate-500 bg-white p-2 rounded-xl border leading-relaxed whitespace-pre-wrap">${q.description}</div>
+                    ` : ''}
+                    <div class="space-y-1">
+                        <span class="text-[9px] font-bold text-slate-400 uppercase">Tùy chọn trả lời:</span>
+                        ${answerInputHTML}
+                    </div>
+                `;
+                content.appendChild(itemDiv);
+            });
+
+            document.getElementById("modal-preview-form").classList.remove("hidden");
+        }
+
+        function closePreviewFormModal() {
+            document.getElementById("modal-preview-form").classList.add("hidden");
+        }
+
+        function updateQuestionField(qIdx, field, val) {
+            newTmplQuestions[qIdx][field] = val;
+        }
+
+        function updateQuestionOptionText(qIdx, optIdx, val) {
+            newTmplQuestions[qIdx].options[optIdx] = val;
+        }
+
+        function addQuestionOption(qIdx) {
+            if (!newTmplQuestions[qIdx].options) {
+                newTmplQuestions[qIdx].options = [];
+            }
+            newTmplQuestions[qIdx].options.push("Mới...");
+            renderMaintenanceForms();
+        }
+
+        function removeQuestionOption(qIdx, optIdx) {
+            newTmplQuestions[qIdx].options.splice(optIdx, 1);
+            renderMaintenanceForms();
+        }
+
+        function removeNewTmplQuestion(idx) {
+            newTmplQuestions.splice(idx, 1);
+            renderMaintenanceForms();
+        }
+
+        function addNewQuestionInput() {
+            newTmplQuestions.push({ 
+                question: "Hạng mục kiểm tra mới...", 
+                description: "", 
+                required: false,
+                options: ["YES", "NO"]
+            });
+            renderMaintenanceForms();
+        }
+
+        function saveFormTemplate() {
+            const name = document.getElementById("new-template-name").value.trim();
+            const sys = document.getElementById("new-template-system").value;
+            const code = document.getElementById("new-template-code").value.trim();
+
+            if (!name || !code) {
+                showCustomToast("Vui lòng nhập tên và mã hệ thống!", "error");
+                return;
+            }
+
+            const t = {
+                id: "tmpl-" + Date.now(),
+                name: name,
+                system: sys,
+                code: code,
+                questions: JSON.parse(JSON.stringify(newTmplQuestions))
+            };
+
+            state.templates.push(t);
+            saveState();
+
+            document.getElementById("new-template-name").value = "";
+            document.getElementById("new-template-code").value = "";
+            newTmplQuestions = [
+                { 
+                    question: "THỰC HIỆN LOTO", 
+                    description: "1. Chuyển Switch tủ điện sang vị trí off Chiller sẽ bảo trì\n2. Off CB chính...\n3. Dán cảnh báo", 
+                    required: true,
+                    options: ["YES", "NO"]
+                }
+            ];
+
+            showCustomToast("Đã lưu thiết kế biểu mẫu mới thành công!", "success");
+            renderMaintenanceForms();
+            logAction("Tạo form mẫu", `Tạo biểu mẫu: ${name} thuộc hệ thống ${sys}`);
+        }
+
+        function fillTaskForm(taskId) {
+            const task = state.tasks.find(t => t.id === taskId);
+            if (!task) return;
+
+            const tmpl = state.templates.find(t => t.id === task.formTemplateId);
+            if (!tmpl) {
+                showCustomToast("Biểu mẫu liên kết hiện không khả dụng!", "error");
+                return;
+            }
+
+            currentFillTaskId = taskId;
+            currentFillTemplate = tmpl;
+            formPhotosDataUrls = [];
+
+            document.getElementById("fill-form-title").innerText = `Phiếu bảo trì: ${tmpl.name}`;
+            document.getElementById("fill-form-code").innerText = tmpl.code;
+            document.getElementById("fill-form-date").innerText = new Date().toLocaleDateString("vi-VN");
+
+            const container = document.getElementById("fill-form-checklist-container");
+            container.innerHTML = "";
+            
+            tmpl.questions.forEach((q, qidx) => {
+                const itemDiv = document.createElement("div");
+                itemDiv.className = "p-4 bg-slate-50 border rounded-2xl space-y-2.5 shadow-sm";
+                
+                let answerInputHTML = "";
+                if (q.options && q.options.length > 0) {
+                    answerInputHTML = `<div class="flex flex-wrap gap-2.5">`;
+                    q.options.forEach((opt, optIdx) => {
+                        answerInputHTML += `
+                            <label class="flex items-center gap-1.5 bg-white border px-3 py-1.5 rounded-xl cursor-pointer font-bold text-xs text-slate-700 hover:bg-slate-100 transition shadow-sm">
+                                <input type="radio" name="response-select-${qidx}" value="${opt}" ${optIdx === 0 ? 'checked' : ''} class="w-4 h-4 text-indigo-600 focus:ring-indigo-500">
+                                <span>${opt}</span>
+                            </label>
+                        `;
+                    });
+                    answerInputHTML += `</div>`;
+                } else {
+                    answerInputHTML = `
+                        <input type="text" id="response-select-${qidx}" placeholder="Nhập văn bản tự do..." class="p-2 border rounded-xl bg-white text-xs w-full font-semibold focus:ring-2 focus:ring-indigo-500 outline-none">
+                    `;
+                }
+
+                itemDiv.innerHTML = `
+                    <div class="font-extrabold text-slate-800 text-xs">
+                        ${qidx + 1}. ${q.question} ${q.required ? '<span class="text-rose-500 font-bold">*</span>' : ''}
+                    </div>
+                    ${q.description ? `
+                        <div class="text-[11px] text-slate-500 bg-white p-2.5 rounded-xl border leading-relaxed whitespace-pre-wrap">${q.description}</div>
+                    ` : ''}
+                    <div class="flex flex-col gap-2 mt-1">
+                        <label class="block text-[10px] font-black text-slate-400 uppercase">Kết quả kiểm tra:</label>
+                        ${answerInputHTML}
+                        <textarea id="response-note-${qidx}" placeholder="Ghi chú thêm chi tiết (nếu có)..." class="p-2 border rounded-xl text-xs bg-white resize-y h-auto focus:ring-2 focus:ring-indigo-500 outline-none" rows="1"></textarea>
+                    </div>
+                `;
+                container.appendChild(itemDiv);
+            });
+
+            // Populate multi selects
+            const techSel = document.getElementById("fill-form-tech-select");
+            techSel.innerHTML = "";
+            state.members.filter(m => m.title === "Technician" || m.title === "Carpenter").forEach(m => {
+                const opt = document.createElement("option");
+                opt.value = m.fullname;
+                opt.innerText = m.fullname;
+                techSel.appendChild(opt);
+            });
+
+            const dutySel = document.getElementById("fill-form-duty-select");
+            dutySel.innerHTML = "";
+            state.members.filter(m => m.title === "Duty Engineer").forEach(m => {
+                const opt = document.createElement("option");
+                opt.value = m.fullname;
+                opt.innerText = m.fullname;
+                dutySel.appendChild(opt);
+            });
+
+            document.getElementById("fill-form-thirdparty-name").value = "";
+            document.getElementById("fill-form-photos").value = "";
+            document.getElementById("fill-form-photos-preview").innerHTML = "";
+            
+            clearSig('tech');
+            clearSig('duty');
+            clearSig('thirdparty');
+
+            document.getElementById("modal-fill-form").classList.remove("hidden");
+        }
+
+        function previewFormPhotos(input) {
+            const preview = document.getElementById("fill-form-photos-preview");
+            preview.innerHTML = "";
+            formPhotosDataUrls = [];
+
+            if (input.files) {
+                Array.from(input.files).forEach(file => {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        formPhotosDataUrls.push(e.target.result);
+                        const img = document.createElement("img");
+                        img.src = e.target.result;
+                        img.className = "w-16 h-16 rounded object-cover border shadow-sm";
+                        preview.appendChild(img);
+                    };
+                    reader.readAsDataURL(file);
+                });
+            }
+        }
+
+        document.getElementById("active-maintenance-form").onsubmit = function(e) {
+            e.preventDefault();
+
+            const responses = [];
+            let isValid = true;
+
+            currentFillTemplate.questions.forEach((q, qidx) => {
+                let val = "";
+                if (q.options && q.options.length > 0) {
+                    const selectedRad = document.querySelector(`input[name="response-select-${qidx}"]:checked`);
+                    val = selectedRad ? selectedRad.value : "";
+                } else {
+                    val = document.getElementById(`response-select-${qidx}`).value.trim();
+                }
+
+                if (q.required && !val) {
+                    isValid = false;
+                    showCustomToast(`Vui lòng điền mục bắt buộc: ${q.question}`, "warning");
+                }
+
+                const note = document.getElementById(`response-note-${qidx}`).value.trim();
+                responses.push({ step: q.question, val: val, note: note });
+            });
+
+            if (!isValid) return;
+
+            const selectedTech = document.getElementById("fill-form-tech-select").value;
+            const selectedDuty = document.getElementById("fill-form-duty-select").value;
+            const thirdPartyName = document.getElementById("fill-form-thirdparty-name").value.trim() || "Đối tác bên thứ ba";
+
+            const techSig = sigCanvases['tech'].toDataURL();
+            const dutySig = sigCanvases['duty'].toDataURL();
+            const thirdpartySig = sigCanvases['thirdparty'].toDataURL();
+
+            const submissionId = "sub-" + Date.now();
+
+            const payload = {
+                id: submissionId,
+                taskId: currentFillTaskId,
+                templateId: currentFillTemplate.id,
+                templateName: currentFillTemplate.name,
+                code: currentFillTemplate.code,
+                dateSubmitted: new Date().toLocaleDateString("vi-VN"),
+                responses: responses,
+                photos: formPhotosDataUrls,
+                techs: [selectedTech],
+                duties: [selectedDuty],
+                thirdPartyName: thirdPartyName,
+                signatures: { tech: techSig, duty: dutySig, thirdparty: thirdpartySig }
+            };
+
+            state.formSubmissions.push(payload);
+            
+            const task = state.tasks.find(t => t.id === currentFillTaskId);
+            if (task) {
+                task.formFilledId = submissionId;
+            }
+
+            saveState();
+            closeFillFormModal();
+
+            if (state.settings.notifyOnSubmit === "on") {
+                triggerAdminNotification(`Nhân viên ${selectedTech} nộp phiếu bảo trì hệ thống: ${currentFillTemplate.name}`, submissionId);
+            }
+
+            showCustomToast("Phiếu bảo trì đã được nộp thành công vào thư mục lưu trữ!", "success");
+            renderWeeklyPlanTable();
+            logAction("Nộp form bảo trì", `Hoàn tất phiếu kiểm tra: ${currentFillTemplate.name}`);
+        };
+
+        function closeFillFormModal() {
+            document.getElementById("modal-fill-form").classList.add("hidden");
+        }
+
+        function createNewNextWeek() {
+            if (!state.weeks) state.weeks = [];
+            const lastWeek = state.weeks[state.weeks.length - 1] || "Tuần 23 (01/06 - 07/06/2026)";
+            
+            const match = lastWeek.match(/Tuần\s+(\d+)\s*\((\d{2})\/(\d{2})\s*-\s*(\d{2})\/(\d{2})\/(\d{4})\)/);
+            let nextNum = 24;
+            let nextMonday = new Date(2026, 5, 8);
+            
+            if (match) {
+                nextNum = parseInt(match[1]) + 1;
+                const lastSunDay = parseInt(match[4]);
+                const lastSunMonth = parseInt(match[5]) - 1;
+                const lastSunYear = parseInt(match[6]);
+                
+                const lastSunDate = new Date(lastSunYear, lastSunMonth, lastSunDay);
+                nextMonday = new Date(lastSunDate);
+                nextMonday.setDate(lastSunDate.getDate() + 1);
+            }
+            
+            const nextSunday = new Date(nextMonday);
+            nextSunday.setDate(nextMonday.getDate() + 6);
+            
+            const pad = (n) => String(n).padStart(2, '0');
+            const newWeekStr = `Tuần ${nextNum} (${pad(nextMonday.getDate())}/${pad(nextMonday.getMonth()+1)} - ${pad(nextSunday.getDate())}/${pad(nextSunday.getMonth()+1)}/${nextSunday.getFullYear()})`;
+            
+            state.weeks.push(newWeekStr);
+            
+            const shifts = ["Ca A", "Ca B", "Ca C", "Ca A", "Ca B"];
+            const groups = ["Vận Hành", "Bảo Trì", "Carpenter", "Vận Hành", "Bảo Trì"];
+            for (let i = 0; i < 5; i++) {
+                const tDate = new Date(nextMonday);
+                tDate.setDate(nextMonday.getDate() + i);
+                const dateStr = `${tDate.getFullYear()}-${pad(tDate.getMonth()+1)}-${pad(tDate.getDate())}`;
+                
+                state.tasks.push({
+                    id: "task-auto-" + Date.now() + "-" + i,
+                    weekNum: newWeekStr,
+                    date: dateStr,
+                    shift: shifts[i],
+                    group: groups[i],
+                    area: "Khu kỹ thuật sảnh chính / Thiết bị hầm",
+                    content: "Bảo trì và ghi nhận chỉ số kiểm tra hàng ngày",
+                    photos: [],
+                    formTemplateId: "",
+                    formFilledId: null,
+                    assignees: [],
+                    progress: "Đang thực hiện",
+                    note: "",
+                    noteColor: "#1e293b",
+                    sheetLinks: []
+                });
+            }
+            
+            activeWeekFilterVal = newWeekStr;
+            saveState();
+            
+            setupWeeklyFilters();
+            renderWeeklyPlanTable();
+            showCustomToast(`Đã tạo thành công ${newWeekStr}!`, "success");
+            logAction("Tạo tuần mới", `Đã tạo kế hoạch cho ${newWeekStr}`);
+        }
+
+        function deleteFormTemplate(id) {
+            showConfirm("Xác nhận", "Xóa vĩnh viễn mẫu biểu này khỏi hệ thống?", function() {
+                state.templates = state.templates.filter(t => t.id !== id);
+                saveState();
+                renderMaintenanceForms();
+                showCustomToast("Đã xóa mẫu biểu thành công!", "info");
+            });
+        }
+
+        function renderSubmittedFormsList() {
+            const list = document.getElementById("submitted-forms-list");
+            if (!list) return;
+            list.innerHTML = "";
+
+            const filtered = state.formSubmissions.filter(sub => {
+                const tmpl = state.templates.find(t => t.id === sub.templateId);
+                return tmpl && (tmpl.system === state.currentFolder || state.currentFolder === tmpl.system);
+            });
+
+            if (filtered.length === 0) {
+                list.innerHTML = `<div class="col-span-3 text-center text-slate-400 py-6 text-xs font-semibold">Thư mục trống. Chưa có tệp biểu mẫu nào được nộp.</div>`;
+                return;
+            }
+
+            filtered.forEach(sub => {
+                const div = document.createElement("div");
+                div.className = "bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-2 text-xs flex flex-col justify-between hover:border-blue-300 transition";
+                div.innerHTML = `
+                    <div>
+                        <div class="flex justify-between items-start">
+                            <h4 class="font-extrabold text-slate-800 text-sm leading-tight">${sub.templateName}</h4>
+                            <span class="bg-indigo-100 text-indigo-800 text-[9px] font-black px-1.5 py-0.5 rounded-full">${sub.code}</span>
+                        </div>
+                        <div class="space-y-1 text-slate-500 text-[11px] mt-2 leading-tight">
+                            <div>Ngày lưu: <span class="font-bold text-slate-700">${sub.dateSubmitted}</span></div>
+                            <div>Thực hiện: <span class="font-semibold text-slate-700">${sub.techs ? sub.techs.join(", ") : ""}</span></div>
+                        </div>
+                    </div>
+                    <div class="flex gap-2 pt-2 border-t mt-2 justify-end">
+                        <button onclick="downloadFormPDF('${sub.id}')" class="bg-rose-600 hover:bg-rose-700 text-white font-bold text-[10px] px-2 py-1 rounded shadow flex items-center gap-1">
+                            <i class="fa-solid fa-file-pdf"></i> Tải PDF
+                        </button>
+                        <button onclick="deleteSubmittedForm('${sub.id}')" class="text-rose-500 hover:text-rose-700 text-[11px] font-black">Xóa</button>
+                    </div>
+                `;
+                list.appendChild(div);
+            });
+        }
+
+        function createNewSubFolderPrompt() {
+            const folderName = prompt("Nhập tên Thư Mục cần tạo mới:");
+            if (!folderName) return;
+
+            // Check duplicate name
+            const isDuplicate = predefinedSystems.includes(folderName) || (state.folders || []).some(f => f.name === folderName);
+            if (isDuplicate) {
+                showCustomToast("Tên thư mục đã tồn tại trong hệ thống!", "error");
+                return;
+            }
+
+            // Ask if user wants root folder or subfolder
+            const isRoot = confirm(`Bấm "OK" để tạo Thư mục chính (Root Folder)\nBấm "Hủy (Cancel)" để tạo Thư mục con dưới thư mục đang chọn: [${state.currentFolder || 'Hệ điện'}]`);
+            const parent = isRoot ? 'root' : (state.currentFolder || 'Hệ điện');
+
+            const f = {
+                id: "folder-" + Date.now(),
+                name: folderName,
+                parent: parent
+            };
+            if (!state.folders) state.folders = [];
+            state.folders.push(f);
+            saveState();
+            
+            showCustomToast(`Đã tạo thành công thư mục: ${folderName}!`, "success");
+            renderMaintenanceForms();
+            logAction("Tạo thư mục", `Tạo thư mục mới "${folderName}" thuộc cấp: ${parent}`);
+        }
+
+        function deleteSubmittedForm(subId) {
+            showConfirm("Xác nhận", "Xóa vĩnh viễn phiếu bảo trì đã nộp?", function() {
+                const sub = state.formSubmissions.find(s => s.id === subId);
+                if (sub) {
+                    const task = state.tasks.find(t => t.id === sub.taskId);
+                    if (task) task.formFilledId = null;
+                }
+                state.formSubmissions = state.formSubmissions.filter(s => s.id !== subId);
+                saveState();
+                renderMaintenanceForms();
+                showCustomToast("Đã xóa vĩnh viễn!", "info");
+            });
+        }
+
+        function deleteFilledForm(taskId) {
+            const task = state.tasks.find(t => t.id === taskId);
+            if (task && task.formFilledId) {
+                showConfirm("Xác nhận", "Xóa phiếu bảo trì đã nộp này?", function() {
+                    state.formSubmissions = state.formSubmissions.filter(s => s.id !== task.formFilledId);
+                    task.formFilledId = null;
+                    saveState();
+                    renderWeeklyPlanTable();
+                    showCustomToast("Đã xóa phiếu bảo trì thành công!", "info");
+                });
+            }
+        }
+
+        function updateTaskField(taskId, field, val) {
+            const task = state.tasks.find(t => t.id === taskId);
+            if (task) {
+                task[field] = val;
+                saveState();
+            }
+        }
+
+        function updateTaskAssignee(taskId, name, checked) {
+            const task = state.tasks.find(t => t.id === taskId);
+            if (task) {
+                if (!task.assignees) task.assignees = [];
+                if (checked) {
+                    if (!task.assignees.includes(name)) task.assignees.push(name);
+                } else {
+                    task.assignees = task.assignees.filter(x => x !== name);
+                }
+                saveState();
+            }
+        }
+
+        function uploadTaskPhoto(taskId, input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const task = state.tasks.find(t => t.id === taskId);
+                    if (task) {
+                        if (!task.photos) task.photos = [];
+                        task.photos.push(e.target.result);
+                        saveState();
+                        renderWeeklyPlanTable();
+                        showCustomToast("Đã thêm ảnh minh chứng thành công!", "success");
+                    }
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        function deleteTaskPhoto(taskId, idx) {
+            const task = state.tasks.find(t => t.id === taskId);
+            if (task) {
+                task.photos.splice(idx, 1);
+                saveState();
+                renderWeeklyPlanTable();
+                showCustomToast("Đã xóa ảnh minh chứng!", "info");
+            }
+        }
+
+        function changeTaskNoteColor(taskId, color) {
+            const task = state.tasks.find(t => t.id === taskId);
+            if (task) {
+                task.noteColor = color;
+                saveState();
+                renderWeeklyPlanTable();
+            }
+        }
+
+        function deleteTaskRow(taskId) {
+            showConfirm("Xác nhận xóa", "Bạn có thực sự muốn xóa dòng công việc này?", function() {
+                state.tasks = state.tasks.filter(t => t.id !== taskId);
+                saveState();
+                renderWeeklyPlanTable();
+                showCustomToast("Đã xóa dòng thành công!", "info");
+            });
+        }
+
+        function updateTaskProgress(taskId, value) {
+            const task = state.tasks.find(t => t.id === taskId);
+            if (!task) return;
+
+            task.progress = value;
+            saveState();
+
+            if (value === "Bàn giao" || value === "Làm lại") {
+                const alreadyExists = state.backlogs.some(b => b.taskId === taskId);
+                if (!alreadyExists) {
+                    const backlogItem = {
+                        id: "backlog-" + Date.now(),
+                        taskId: task.id,
+                        weekNum: task.weekNum,
+                        date: task.date,
+                        group: task.group,
+                        area: task.area,
+                        content: task.content,
+                        photos: [...(task.photos || [])],
+                        oldAssignees: [...(task.assignees || [])],
+                        oldProgress: task.progress,
+                        note: task.note || "",
+                        reDate: "",
+                        reAssignees: []
+                    };
+                    state.backlogs.push(backlogItem);
+                    saveState();
+                    showCustomToast("Đã tự động sao chép sang CÔNG VIỆC TỒN ĐỌNG!", "warning");
+                }
+            }
+            renderWeeklyPlanTable();
+        }
+
+        function insertRowBelow(taskId) {
+            const task = state.tasks.find(t => t.id === taskId);
+            if (!task) return;
+
+            const newT = {
+                id: "task-" + Date.now(),
+                weekNum: task.weekNum,
+                date: task.date,
+                shift: task.shift,
+                group: task.group,
+                area: task.area,
+                content: "Nội dung công việc bổ sung...",
+                photos: [],
+                formTemplateId: "",
+                formFilledId: null,
+                assignees: [],
+                progress: "Đang thực hiện",
+                note: "",
+                noteColor: "#1e293b",
+                sheetLinks: []
+            };
+
+            const idx = state.tasks.findIndex(t => t.id === taskId);
+            state.tasks.splice(idx + 1, 0, newT);
+            saveState();
+            renderWeeklyPlanTable();
+            showCustomToast("Đã chèn dòng công việc mới bên dưới!", "success");
+        }
+
+        function renderBacklogsTable() {
+            const body = document.getElementById("backlogs-table-body");
+            if (!body) return;
+            body.innerHTML = "";
+
+            if (state.backlogs.length === 0) {
+                body.innerHTML = `<tr><td colspan="10" class="p-6 text-center text-slate-400 font-semibold">Không có công việc tồn đọng phát sinh nào cần xử lý.</td></tr>`;
+                return;
+            }
+
+            state.backlogs.forEach(item => {
+                const tr = document.createElement("tr");
+                tr.className = "border-b text-xs hover:bg-slate-50 transition";
+
+                let photosHTML = "";
+                if (item.photos && item.photos.length > 0) {
+                    item.photos.forEach(p => {
+                        photosHTML += `<img src="${p}" class="w-8 h-8 rounded border object-cover">`;
+                    });
+                }
+
+                let assignOptions = `<div class="flex flex-col gap-1 max-h-24 overflow-y-auto">`;
+                state.members.filter(m => m.role !== "Admin").forEach(m => {
+                    const isChecked = item.reAssignees && item.reAssignees.includes(m.fullname);
+                    assignOptions += `
+                        <label class="flex items-center gap-1.5 py-0.5 cursor-pointer text-[11px] font-bold">
+                            <input type="checkbox" ${isChecked ? "checked" : ""} onchange="updateBacklogAssignee('${item.id}', '${m.fullname}', this.checked)" class="rounded text-blue-600">
+                            <span>${m.fullname}</span>
+                        </label>
+                    `;
+                });
+                assignOptions += `</div>`;
+
+                tr.innerHTML = `
+                    <td class="p-3 text-center font-bold text-slate-500">${item.date}</td>
+                    <td class="p-3 font-semibold text-slate-700">${item.group}</td>
+                    <td class="p-3 font-semibold">${item.area || ''}</td>
+                    <td class="p-3 font-bold">${item.content}</td>
+                    <td class="p-3 text-center">
+                        <div class="flex flex-wrap justify-center gap-1">${photosHTML}</div>
+                    </td>
+                    <td class="p-3 font-semibold text-slate-600">${item.oldAssignees ? item.oldAssignees.join(", ") : ""}</td>
+                    <td class="p-3 text-center">
+                        <span class="bg-rose-100 text-rose-800 font-bold px-2 py-0.5 rounded-full text-[10px]">${item.oldProgress}</span>
+                    </td>
+                    <td class="p-3 bg-indigo-50/50">
+                        <div class="flex flex-col gap-1.5">
+                            <label class="text-[9px] font-bold text-slate-500 uppercase">Chọn Ngày Chuyển Lại:</label>
+                            <input type="date" value="${item.reDate || ''}" onchange="updateBacklogField('${item.id}', 'reDate', this.value)" class="p-1 border rounded bg-white text-[11px] font-bold text-slate-700">
+                            
+                            <label class="text-[9px] font-bold text-slate-500 uppercase">Chọn Người Thực Hiện:</label>
+                            <div class="bg-white p-1 rounded border">
+                                ${assignOptions}
+                            </div>
+
+                            <button onclick="commitRedistributeDate('${item.id}')" class="bg-indigo-600 hover:bg-indigo-700 text-white font-black text-[10px] py-1.5 rounded shadow mt-1">
+                                <i class="fa-solid fa-paper-plane"></i> Chuyển lại Weekly Plan
+                            </button>
+                        </div>
+                    </td>
+                    <td class="p-3">
+                        <textarea onchange="updateBacklogField('${item.id}', 'note', this.value)" class="bg-transparent w-full text-[11px] outline-none font-bold font-sans" rows="3">${item.note || ''}</textarea>
+                    </td>
+                    <td class="p-3 text-center">
+                        <button onclick="deleteBacklogRow('${item.id}')" class="text-rose-500 hover:text-rose-700 text-sm">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </td>
+                `;
+                body.appendChild(tr);
+            });
+        }
+
+        function createNewBacklogRow() {
+            const today = "2026-06-03";
+            const currentWeek = activeWeekFilterVal;
+
+            const newB = {
+                id: "backlog-" + Date.now(),
+                taskId: "task-custom-" + Date.now(),
+                weekNum: currentWeek,
+                date: today,
+                group: "Bảo Trì",
+                area: "Khu vực phát sinh mới",
+                content: "Nội dung công việc tồn đọng cần giải quyết gấp...",
+                photos: [],
+                oldAssignees: [],
+                oldProgress: "Làm lại",
+                note: "",
+                reDate: today,
+                reAssignees: []
+            };
+
+            state.backlogs.push(newB);
+            saveState();
+            renderBacklogsTable();
+            showCustomToast("Đã tạo thêm dòng công việc tồn đọng phát sinh mới!", "success");
+        }
+
+        function updateBacklogAssignee(itemId, name, checked) {
+            const item = state.backlogs.find(b => b.id === itemId);
+            if (item) {
+                if (!item.reAssignees) item.reAssignees = [];
+                if (checked) {
+                    if (!item.reAssignees.includes(name)) item.reAssignees.push(name);
+                } else {
+                    item.reAssignees = item.reAssignees.filter(x => x !== name);
+                }
+                saveState();
+                renderBacklogsTable();
+            }
+        }
+
+        function updateBacklogField(itemId, field, val) {
+            const item = state.backlogs.find(b => b.id === itemId);
+            if (item) {
+                item[field] = val;
+                saveState();
+            }
+        }
+
+        function commitRedistributeDate(itemId) {
+            const item = state.backlogs.find(b => b.id === itemId);
+            if (!item) return;
+
+            if (!item.reDate) {
+                showCustomToast("Vui lòng chọn Ngày phân phối lại!", "warning");
+                return;
+            }
+            if (!item.reAssignees || item.reAssignees.length === 0) {
+                showCustomToast("Vui lòng chọn nhân viên chịu trách nhiệm!", "warning");
+                return;
+            }
+
+            let associatedTask = state.tasks.find(t => t.id === item.taskId);
+            if (!associatedTask) {
+                associatedTask = {
+                    id: item.taskId,
+                    weekNum: item.weekNum,
+                    date: item.reDate,
+                    shift: "Ca A",
+                    group: item.group,
+                    area: item.area,
+                    content: `[Tồn Đọng Phát Sinh] - ${item.content}`,
+                    photos: [...item.photos],
+                    formTemplateId: "",
+                    formFilledId: null,
+                    assignees: [...item.reAssignees],
+                    progress: "Đang thực hiện",
+                    note: item.note || "",
+                    sheetLinks: []
+                };
+                state.tasks.push(associatedTask);
+            } else {
+                associatedTask.date = item.reDate;
+                associatedTask.assignees = [...item.reAssignees];
+                associatedTask.progress = "Đang thực hiện";
+                associatedTask.note = `[Phân việc lại ngày ${item.reDate}] - ${item.note || ''}`;
+            }
+
+            state.backlogs = state.backlogs.filter(b => b.id !== itemId);
+            saveState();
+            renderBacklogsTable();
+            showCustomToast("Phân bổ công việc tồn đọng thành công về lại Weekly Plan!", "success");
+        }
+
+        function deleteBacklogRow(itemId) {
+            showConfirm("Xác nhận", "Bạn có muốn xóa mục tồn đọng này không?", function() {
+                state.backlogs = state.backlogs.filter(b => b.id !== itemId);
+                saveState();
+                renderBacklogsTable();
+                showCustomToast("Đã xóa mục tồn đọng khỏi danh sách phát sinh!", "info");
+            });
+        }
+
+        function downloadFormPDF(subId) {
+            const sub = state.formSubmissions.find(s => s.id === subId);
+            if (!sub) return;
+
+            const printCanvas = document.getElementById("pdf-export-canvas");
+            let responsesHTML = "";
+            sub.responses.forEach((r, idx) => {
+                responsesHTML += `
+                    <div style="padding: 6px; border-bottom: 1px solid #e2e8f0; font-size: 11px;">
+                        <strong>${idx + 1}. ${r.step}</strong> <br/>
+                        <span style="color: #2563eb; font-weight: bold;">Kết quả: ${r.val}</span>
+                        ${r.note ? `| <em>Ghi chú: ${r.note}</em>` : ""}
+                    </div>
+                `;
+            });
+
+            let photosMarkup = "";
+            if (sub.photos && sub.photos.length > 0) {
+                photosMarkup += `
+                    <div style="margin-top: 15px;">
+                        <h3 style="font-size: 11px; font-weight: bold; border-bottom: 2px solid #1e3a8a; padding-bottom: 4px; color: #1e3a8a; margin-bottom: 10px;">ẢNH CHỤP MINH CHỨNG THỰC TẾ</h3>
+                        <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                `;
+                sub.photos.forEach(imgData => {
+                    photosMarkup += `<img src="${imgData}" style="width: 130px; height: 100px; object-fit: cover; border: 1px solid #cbd5e1; border-radius: 6px; padding: 2px;">`;
+                });
+                photosMarkup += `</div></div>`;
+            }
+
+            printCanvas.innerHTML = `
+                <div style="font-family: 'Inter', sans-serif; color: #1e293b; padding: 25px;">
+                    <div style="text-align: center; border-bottom: 3px solid #2563eb; padding-bottom: 10px; margin-bottom: 15px;">
+                        <h1 style="font-size: 18px; font-weight: 950; margin: 0; color: #1e3a8a;">BIỂU MẪU BẢO TRÌ KIỂM TY (V2.8)</h1>
+                        <p style="font-size: 10px; color: #64748b; margin: 3px 0 0 0; font-weight: bold;">TRUY XUẤT HỒ SƠ HỆ THỐNG VÀ ĐÁNH GIÁ CHẤT LƯỢNG</p>
+                    </div>
+
+                    <table style="width: 100%; font-size: 11px; margin-bottom: 15px; border-collapse: collapse;">
+                        <tr>
+                            <td style="padding: 4px 0;"><strong>Hệ thống / Thiết bị:</strong> ${sub.templateName}</td>
+                            <td style="padding: 4px 0; text-align: right;"><strong>Mã định danh:</strong> ${sub.code}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 4px 0;"><strong>Ngày kiểm tra:</strong> ${sub.dateSubmitted}</td>
+                            <td style="padding: 4px 0; text-align: right;"><strong>Mã số phiếu:</strong> ${sub.id}</td>
+                        </tr>
+                    </table>
+
+                    <div style="margin-bottom: 20px;">
+                        <h3 style="font-size: 12px; font-weight: bold; border-bottom: 2px solid #1e3a8a; padding-bottom: 4px; color: #1e3a8a;">KẾT QUẢ KIỂM TRA CHI TIẾT</h3>
+                        ${responsesHTML}
+                    </div>
+
+                    ${photosMarkup}
+
+                    <div style="margin-top: 30px;">
+                        <h3 style="font-size: 12px; font-weight: bold; border-bottom: 2px solid #1e3a8a; padding-bottom: 4px; color: #1e3a8a; margin-bottom: 15px;">CHỮ KÝ XÁC NHẬN 3 BÊN</h3>
+                        <table style="width: 100%; font-size: 11px; border-collapse: collapse;">
+                            <tr>
+                                <td style="width: 33%; text-align: center; vertical-align: top; border-right: 1px solid #e2e8f0; padding: 10px;">
+                                    <strong style="display: block; margin-bottom: 5px;">NHÂN VIÊN THỰC HIỆN</strong>
+                                    <img src="${sub.signatures.tech}" style="max-height: 50px; border: 1px dashed #cbd5e1; border-radius: 4px; padding: 2px; margin: 5px auto; display: block;">
+                                    <span style="font-weight: bold; color: #475569;">${sub.techs ? sub.techs.join(", ") : ""}</span>
+                                </td>
+                                <td style="width: 33%; text-align: center; vertical-align: top; border-right: 1px solid #e2e8f0; padding: 10px;">
+                                    <strong style="display: block; margin-bottom: 5px;">TRƯỞNG CA KỸ THUẬT</strong>
+                                    <img src="${sub.signatures.duty}" style="max-height: 50px; border: 1px dashed #cbd5e1; border-radius: 4px; padding: 2px; margin: 5px auto; display: block;">
+                                    <span style="font-weight: bold; color: #475569;">${sub.duties ? sub.duties.join(", ") : ""}</span>
+                                </td>
+                                <td style="width: 33%; text-align: center; vertical-align: top; padding: 10px;">
+                                    <strong style="display: block; margin-bottom: 5px;">NHÂN VIÊN BÊN THỨ BA</strong>
+                                    <img src="${sub.signatures.thirdparty}" style="max-height: 50px; border: 1px dashed #cbd5e1; border-radius: 4px; padding: 2px; margin: 5px auto; display: block;">
+                                    <span style="font-weight: bold; color: #475569;">${sub.thirdPartyName || 'Đối tác bên thứ ba'}</span>
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            `;
+
+            const options = {
+                margin: 0.5,
+                filename: `Phieu_Bao_Tri_${sub.templateName}_${sub.dateSubmitted.replace(/\//g, '-')}.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2 },
+                jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+            };
+
+            html2pdf().from(printCanvas).set(options).save();
+            showCustomToast("PDF đang được kết xuất và tải xuống...", "success");
+        }
+
+        function printAllInFolder() {
+            const filtered = state.formSubmissions.filter(sub => {
+                const tmpl = state.templates.find(t => t.id === sub.templateId);
+                return tmpl && (tmpl.system === state.currentFolder || state.currentFolder === tmpl.system);
+            });
+
+            if (filtered.length === 0) {
+                showCustomToast("Thư mục này không chứa tệp nào để xuất!", "warning");
+                return;
+            }
+
+            filtered.forEach((sub, idx) => {
+                setTimeout(() => {
+                    downloadFormPDF(sub.id);
+                }, idx * 1000);
+            });
+            showCustomToast(`Bắt đầu kết xuất hàng loạt ${filtered.length} tệp PDF...`, "success");
+        }
+
+        function downloadKpiSheetSum() {
+            const workersKpi = evaluateKPIStats();
+            const rows = workersKpi.map(item => ({
+                "Họ & Tên": item.fullname,
+                "Chức danh": item.title,
+                "Nhóm Phân Quyền": item.role,
+                "Tổng việc giao": item.assigned,
+                "Số việc hoàn thành": item.completed,
+                "Hiệu suất KPI %": `${item.kpiPercent.toFixed(1)}%`,
+                "Thái độ đánh giá trung bình (Tối đa 5)": item.attitudeAverage.toFixed(1),
+                "Thái độ với giám sát": item.attitudeGrades.supervisor,
+                "Chuyên cần": item.attitudeGrades.attendance,
+                "Sáng kiến": item.attitudeGrades.initiative,
+                "Phản hồi từ khách": item.attitudeGrades.feedback,
+                "Tác phong gọn gàng": item.attitudeGrades.professionalism,
+                "Ghi chú đánh giá của Admin": item.note || ""
+            }));
+
+            const worksheet = XLSX.utils.json_to_sheet(rows);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "KPI_TongHop_Thang");
+            XLSX.writeFile(workbook, "KPI_Thanh_Tich_Tong_Hop_Ky_Thuat.xlsx");
+            showCustomToast("Đã tải tệp Excel KPI Tổng Hợp của tháng thành công!", "success");
+        }
+
+        function downloadKpiSheetIndividual() {
+            const workersKpi = evaluateKPIStats();
+            const workbook = XLSX.utils.book_new();
+
+            workersKpi.forEach(item => {
+                const detailRows = state.tasks.filter(t => t.assignees && t.assignees.includes(item.fullname)).map(t => ({
+                    "Ngày làm việc": t.date,
+                    "Ca trực": t.shift,
+                    "Khu vực": t.area || "",
+                    "Nội dung công việc bàn giao": t.content,
+                    "Trạng thái tiến độ": t.progress,
+                    "Ghi chú chi tiết": t.note || ""
+                }));
+
+                const ws = XLSX.utils.json_to_sheet(detailRows);
+                XLSX.utils.book_append_sheet(workbook, ws, item.fullname.substring(0, 30));
+            });
+
+            XLSX.writeFile(workbook, "Bao_Cao_KPI_Tung_Nhan_Vien_Chi_Tiet.xlsx");
+            showCustomToast("Đã kết xuất báo cáo Excel KPI cá nhân từng nhân viên thành công!", "success");
+        }
+
+        function renderAdminConfig() {
+            document.getElementById("admin-auto-off").value = state.settings.autoOff;
+            document.getElementById("admin-notify-on-submit").value = state.settings.notifyOnSubmit;
+            document.getElementById("perm-kpi").checked = state.settings.visibleTabs.kpi;
+            document.getElementById("perm-forms").checked = state.settings.visibleTabs.forms;
+
+            const userExportSelect = document.getElementById("log-export-user");
+            if (userExportSelect) {
+                const currentSelection = userExportSelect.value;
+                userExportSelect.innerHTML = `<option value="">-- Tất cả User --</option>`;
+                state.members.forEach(m => {
+                    const opt = document.createElement("option");
+                    opt.value = m.fullname;
+                    opt.innerText = m.fullname;
+                    if (m.fullname === currentSelection) opt.selected = true;
+                    userExportSelect.appendChild(opt);
+                });
+            }
+
+            const tbody = document.getElementById("members-list-table");
+            if (tbody) {
+                tbody.innerHTML = "";
+                state.members.forEach(m => {
+                    const tr = document.createElement("tr");
+                    tr.className = "border-b hover:bg-slate-50";
+                    tr.innerHTML = `
+                        <td class="p-2 font-bold">${m.fullname}</td>
+                        <td class="p-2">${m.title || 'Duty Engineer'} / ${m.role}</td>
+                        <td class="p-2">
+                            <select onchange="updateMemberRoleDirect('${m.id}', this.value)" class="p-1 border rounded bg-white text-xs font-semibold">
+                                <option value="Thành viên" ${m.role === 'Thành viên' ? 'selected' : ''}>Thành viên</option>
+                                <option value="Admin" ${m.role === 'Admin' ? 'selected' : ''}>Admin</option>
+                            </select>
+                        </td>
+                        <td class="p-2">
+                            <input type="text" value="${m.pass}" placeholder="Mật khẩu mới" onchange="changeMemberPasswordDirect('${m.id}', this.value)" class="p-1 border rounded w-28 text-xs bg-slate-50 font-extrabold text-slate-800">
+                        </td>
+                        <td class="p-2 text-center">
+                            <button onclick="deleteMember('${m.id}')" class="text-rose-500 hover:text-rose-700 text-xs font-bold">
+                                <i class="fa-solid fa-trash-can"></i> Xóa
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+
+            const logBody = document.getElementById("audit-logs-table-body");
+            if (logBody) {
+                logBody.innerHTML = "";
+                state.auditLogs.slice(0, 50).forEach(log => {
+                    const tr = document.createElement("tr");
+                    tr.className = "border-b text-slate-600 hover:bg-slate-50 text-[11px]";
+                    tr.innerHTML = `
+                        <td class="p-2 font-semibold text-slate-400">${log.timestamp}</td>
+                        <td class="p-2 font-bold">${log.user}</td>
+                        <td class="p-2 font-semibold text-indigo-600">${log.action}</td>
+                        <td class="p-2 text-slate-500">${log.details}</td>
+                    `;
+                    logBody.appendChild(tr);
+                });
+            }
+        }
+
+        function changeMemberPasswordDirect(id, newPass) {
+            if (!newPass.trim()) return;
+            const m = state.members.find(x => x.id === id);
+            if (m) {
+                m.pass = newPass.trim();
+                saveState();
+                showCustomToast(`Đã đổi mật khẩu cho tài khoản ${m.fullname} thành công!`, "success");
+                logAction("Đổi mật khẩu", `Thay đổi mật khẩu đăng nhập của thành viên: ${m.fullname}`);
+                renderAdminConfig();
+            }
+        }
+
+        function updateMemberRoleDirect(id, roleVal) {
+            const m = state.members.find(x => x.id === id);
+            if (m) {
+                m.role = roleVal;
+                saveState();
+                showCustomToast("Đã chuyển đổi quyền hệ thống!", "success");
+                logAction("Thay đổi quyền", `Cập nhật phân quyền ${roleVal} cho thành viên ${m.fullname}`);
+                renderAdminConfig();
+            }
+        }
+
+        function updateSystemSettings() {
+            state.settings.autoOff = document.getElementById("admin-auto-off").value;
+            state.settings.notifyOnSubmit = document.getElementById("admin-notify-on-submit").value;
+            state.settings.visibleTabs.kpi = document.getElementById("perm-kpi").checked;
+            state.settings.visibleTabs.forms = document.getElementById("perm-forms").checked;
+            saveState();
+            showCustomToast("Đã cập nhật cấu hình thiết lập hệ thống!", "success");
+            logAction("Cập nhật cài đặt", "Thay đổi các cấu hình bảo mật hoặc hiển thị.");
+            setupIdleTimer();
+        }
+
+        function triggerAdminNotification(msg, formId = null) {
+            const banner = document.getElementById("admin-notify-banner");
+            const notifyMsg = document.getElementById("notify-msg");
+            if (notifyMsg && banner) {
+                notifyMsg.innerText = msg;
+                banner.classList.remove("hidden");
+            }
+
+            const notificationObj = {
+                id: "notif-" + Date.now(),
+                timestamp: new Date().toLocaleString("vi-VN"),
+                message: msg,
+                formId: formId,
+                read: false
+            };
+            if (!state.adminNotifications) state.adminNotifications = [];
+            state.adminNotifications.unshift(notificationObj);
+            saveState();
+
+            updateAdminNotificationBell();
+        }
+
+        function clearNotify() {
+            document.getElementById("admin-notify-banner").classList.add("hidden");
+        }
+
+        function deleteSubFolder(id, event) {
+            event.stopPropagation();
+            showConfirm("Xác nhận", "Xóa thư mục con này?", function() {
+                state.folders = state.folders.filter(f => f.id !== id);
+                saveState();
+                renderMaintenanceForms();
+            });
+        }
+
+        function updateAdminNotificationBell() {
+            const badge = document.getElementById("admin-bell-badge");
+            const list = document.getElementById("admin-bell-list");
+            if (!badge || !list) return;
+
+            if (!state.adminNotifications) state.adminNotifications = [];
+            const unreadCount = state.adminNotifications.filter(n => !n.read).length;
+
+            if (unreadCount > 0) {
+                badge.innerText = unreadCount;
+                badge.classList.remove("hidden");
+            } else {
+                badge.classList.add("hidden");
+            }
+
+            list.innerHTML = "";
+            if (state.adminNotifications.length === 0) {
+                list.innerHTML = `<div class="text-center text-slate-400 py-4 text-[11px] font-semibold">Chưa có thông báo biểu mẫu nào.</div>`;
+                return;
+            }
+
+            state.adminNotifications.forEach(n => {
+                const itemDiv = document.createElement("div");
+                itemDiv.className = `p-2.5 rounded-xl text-[11px] transition border ${n.read ? 'bg-slate-50 text-slate-500 border-slate-100' : 'bg-blue-50 text-slate-800 border-blue-100 font-semibold'}`;
+                itemDiv.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <span class="leading-snug">${n.message}</span>
+                        <span class="text-[8px] text-slate-400 whitespace-nowrap ml-1 font-semibold">${n.timestamp.split(' ')[0]}</span>
+                    </div>
+                    <div class="flex justify-between items-center mt-1 pt-1 border-t border-slate-100/50">
+                        <span class="text-[9px] text-indigo-500 font-semibold">${n.timestamp.split(' ')[1]}</span>
+                        <button onclick="markNotificationRead('${n.id}', event)" class="text-[9px] text-blue-600 hover:underline">
+                            ${n.read ? 'Đã đọc' : 'Đánh dấu đã đọc'}
+                        </button>
+                    </div>
+                `;
+                list.appendChild(itemDiv);
+            });
+        }
+
+        function toggleAdminNotificationDropdown(event) {
+            event.stopPropagation();
+            const dropdown = document.getElementById("admin-bell-dropdown");
+            if (dropdown) {
+                dropdown.classList.toggle("hidden");
+            }
+        }
+
+        function markNotificationRead(notifId, event) {
+            if (event) event.stopPropagation();
+            const notif = state.adminNotifications.find(n => n.id === notifId);
+            if (notif) {
+                notif.read = true;
+                saveState();
+                updateAdminNotificationBell();
+            }
+        }
+
+        function markAllNotificationsRead(event) {
+            if (event) event.stopPropagation();
+            state.adminNotifications.forEach(n => n.read = true);
+            saveState();
+            updateAdminNotificationBell();
+            showCustomToast("Đã đánh dấu đọc tất cả thông báo!", "success");
+        }
+
+        function exportDailyUserLog() {
+            const selectedUser = document.getElementById("log-export-user").value;
+            const selectedDateInput = document.getElementById("log-export-date").value;
+            
+            if (!selectedDateInput) {
+                showCustomToast("Vui lòng chọn ngày cần xuất nhật ký!", "warning");
+                return;
+            }
+
+            // Convert date format from YYYY-MM-DD to match the start string format (e.g. "3/6/2026")
+            const parts = selectedDateInput.split("-");
+            const dayStr = parseInt(parts[2]).toString();
+            const monthStr = parseInt(parts[1]).toString();
+            const yearStr = parts[0];
+            const matchingDateQuery = `${dayStr}/${monthStr}/${yearStr}`;
+
+            let filteredLogs = state.auditLogs.filter(log => {
+                const isDateMatched = log.timestamp.includes(matchingDateQuery);
+                const isUserMatched = !selectedUser || log.user === selectedUser;
+                return isDateMatched && isUserMatched;
+            });
+
+            if (filteredLogs.length === 0) {
+                showCustomToast(`Không tìm thấy nhật ký hoạt động của ${selectedUser || 'tất cả thành viên'} vào ngày ${matchingDateQuery}!`, "warning");
+                return;
+            }
+
+            const data = filteredLogs.map(log => ({
+                "Thời gian": log.timestamp,
+                "Thành viên thao tác": log.user,
+                "Hành động thực hiện": log.action,
+                "Chi tiết kỹ thuật": log.details
+            }));
+
+            const worksheet = XLSX.utils.json_to_sheet(data);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "DailyUserLog");
+            
+            const fileUserLabel = selectedUser ? selectedUser.replace(/\s+/g, '_') : "Tat_Ca_Users";
+            const fileDateLabel = selectedDateInput.replace(/-/g, '_');
+            const fileName = `Nhat_Ky_Hoat_Dong_${fileUserLabel}_Ngay_${fileDateLabel}.xlsx`;
+            
+            XLSX.writeFile(workbook, fileName);
+            showCustomToast(`Đã xuất nhật ký ngày ${matchingDateQuery} thành công!`, "success");
+            logAction("Xuất nhật ký ngày", `Xuất nhật ký thành viên ${selectedUser || 'Tất cả'} vào ngày ${matchingDateQuery}`);
+        }
+
+        // Close bell dropdown on clicking outside
+        document.addEventListener("click", function() {
+            const dropdown = document.getElementById("admin-bell-dropdown");
+            if (dropdown) dropdown.classList.add("hidden");
+        });
+
+        function exportAuditLogsExcel() {
+            const data = state.auditLogs.map(log => ({
+                "Thời gian": log.timestamp,
+                "Thành viên thực hiện": log.user,
+                "Hành động": log.action,
+                "Chi tiết thao tác": log.details
+            }));
+            const worksheet = XLSX.utils.json_to_sheet(data);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "NhatKyHoatDong");
+            XLSX.writeFile(workbook, "Nhat_Ky_Sua_Doi_He_Thong.xlsx");
+            showCustomToast("Đã tải tệp Excel Nhật ký chỉnh sửa!", "success");
+        }
+
+        function archiveMonthKPI() {
+            showConfirm("Chốt KPI Tháng", "Khóa sổ dữ liệu kết quả kpi của tháng?", function() {
+                showCustomToast("Đã khóa sổ KPI tháng thành công!", "success");
+            });
+        }
+
+        function openAddMemberModal() {
+            document.getElementById("modal-add-member").classList.remove("hidden");
+        }
+
+        function closeAddMemberModal() {
+            document.getElementById("modal-add-member").classList.add("hidden");
+        }
+
+        function saveNewMember() {
+            const name = document.getElementById("add-mem-fullname").value.trim();
+            const user = document.getElementById("add-mem-user").value.trim();
+            const pass = document.getElementById("add-mem-pass").value.trim();
+            const title = document.getElementById("add-mem-title").value;
+            const role = document.getElementById("add-mem-role").value;
+
+            if (!name || !user || !pass) {
+                showCustomToast("Vui lòng nhập đầy đủ thông tin nhân viên!", "error");
+                return;
+            }
+
+            const isDuplicate = state.members.some(m => m.user === user);
+            if (isDuplicate) {
+                showCustomToast("Username này đã được đăng ký!", "error");
+                return;
+            }
+
+            const m = {
+                id: "mem-" + Date.now(),
+                fullname: name,
+                user: user,
+                pass: pass,
+                role: role,
+                title: title,
+                attitudeGrades: { supervisor: 5, attendance: 5, initiative: 5, feedback: 5, professionalism: 5 },
+                note: ""
+            };
+
+            state.members.push(m);
+            saveState();
+            closeAddMemberModal();
+            renderAdminConfig();
+            showCustomToast(`Đã thêm thành công nhân viên: ${name}`, "success");
+            logAction("Thêm nhân sự", `Tạo tài khoản đăng nhập cho nhân viên mới: ${name}`);
+        }
+
+        function deleteMember(id) {
+            showConfirm("Xác nhận xóa", "Bạn có thực sự muốn xóa tài khoản nhân viên này?", function() {
+                state.members = state.members.filter(m => m.id !== id);
+                saveState();
+                renderAdminConfig();
+                showCustomToast("Đã xóa nhân viên thành công!", "info");
+            });
+        }
+
+        function updateMemberNote(fullname, noteText) {
+            const m = state.members.find(x => x.fullname === fullname);
+            if (m) {
+                m.note = noteText;
+                saveState();
+            }
+        }
+
+        function pauseApplication() {
+            showCustomToast("Hệ thống đã được tạm dừng bảo trì!", "warning");
+        }
+
+        function resetApplicationStorage() {
+            showConfirm("Reset dữ liệu", "Bạn có thực sự muốn xóa toàn bộ dữ liệu ứng dụng về trạng thái mặc định?", function() {
+                localStorage.removeItem("kpi_app_state_v28");
+                showCustomToast("Hệ thống sẽ tải lại dữ liệu gốc...", "info");
+                setTimeout(() => location.reload(), 1500);
+            });
+        }
+    </script>
+</body>
+</html>
