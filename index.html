@@ -1654,7 +1654,13 @@ service cloud.firestore {<br>
 
                 tr.innerHTML = `
                     ${dayColHTML}
-                    <td class="p-2 text-center font-bold text-slate-700 border-r">${task.shift}</td>
+                    <td class="p-2 text-center font-bold text-slate-700 border-r">
+                        <select onchange="updateTaskField('${task.id}', 'shift', this.value)" class="w-full bg-transparent text-slate-700 font-bold border border-slate-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-200">
+                            <option value="Ca A" ${task.shift === 'Ca A' ? 'selected' : ''}>Ca A</option>
+                            <option value="Ca B" ${task.shift === 'Ca B' ? 'selected' : ''}>Ca B</option>
+                            <option value="Ca C" ${task.shift === 'Ca C' ? 'selected' : ''}>Ca C</option>
+                        </select>
+                    </td>
                     <td class="p-2 border-r">
                         <input type="text" value="${task.group}" onchange="updateTaskField('${task.id}', 'group', this.value)" class="bg-transparent border-b border-transparent hover:border-slate-300 focus:border-blue-500 outline-none w-full font-bold text-slate-700">
                     </td>
