@@ -29,6 +29,27 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
+    <!-- Cấu hình co giãn cột và ô như Google Sheets -->
+<style>
+  #weekly-plan-table th {
+    position: relative;
+    resize: horizontal;
+    overflow: auto;
+    min-width: 100px;
+    white-space: nowrap;
+  }
+  #weekly-plan-table td textarea {
+    resize: both;
+    overflow: auto;
+    width: 100%;
+    min-height: 45px;
+    box-sizing: border-box;
+  }
+  .table-responsive {
+    overflow-x: auto;
+    max-width: 100%;
+  }
+</style>
     <script>
       tailwind.config = {
         theme: {
@@ -6368,6 +6389,124 @@
       window.onload = function () {
         initFirebase();
       };
+    // ====== HÀM XEM FORM BẢO TRÌ VÀ TẢI PDF ======
+function viewFormDetails(taskId) {
+  const task = state.tasks.find(t => t.id === taskId);
+  if (!task || !task.submittedForm) {
+    alert("Không tìm thấy dữ liệu biểu mẫu đã nộp!");
+    return;
+  }
+
+  const formData = task.submittedForm;
+  
+  let contentHtml = `
+    <div id="pdf-content-area" style="padding: 20px; font-family: Arial, sans-serif; background: #fff;">
+      <div style="text-align: center; border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 20px;">
+        <h3 style="margin: 0; text-transform: uppercase;">PHIẾU KIỂM TRA BẢO TRÌ BẢO DƯỠNG</h3>
+        <p style="margin: 5px 0 0 0; color: #666;">Hệ thống: <strong>${formData.systemName || 'N/A'}</strong> | Biểu mẫu: <strong>${formData.templateTitle || 'N/A'}</strong></p>
+      </div>
+
+      <table style="width: 100%; margin-bottom: 15px; font-size: 14px;">
+        <tr>
+          <td><strong>Mã công việc:</strong> ${task.id}</td>
+          <td><strong>Ngày thực hiện:</strong> ${task.date || 'N/A'}</td>
+        </tr>
+        <tr>
+          <td><strong>Khu vực:</strong> ${task.location || 'N/A'}</td>
+          <td><strong>Người thực hiện:</strong> ${formData.submittedBy || 'N/A'}</td>
+        </tr>
+      </table>
+
+      <h4 style="border-left: 4px solid #0d6efd; padding-left: 8px; margin-top: 20px;">I. NỘI DUNG KIỂM TRA</h4>
+      <table style="width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px;" border="1">
+        <thead>
+          <tr style="background-color: #f2f2f2;">
+            <th style="padding: 8px; text-align: left;">Hạng mục kiểm tra</th>
+            <th style="padding: 8px; text-align: center; width: 120px;">Kết quả</th>
+            <th style="padding: 8px; text-align: left;">Ghi chú</th>
+          </tr>
+        </thead>
+        <tbody>
+  `;
+
+  if (Array.isArray(formData.items)) {
+    formData.items.forEach(item => {
+      const statusColor = item.status === 'Đạt' || item.status === 'OK' ? 'green' : 'red';
+      contentHtml += `
+        <tr>
+          <td style="padding: 8px;">${item.label || item.question}</td>
+          <td style="padding: 8px; text-align: center; font-weight: bold; color: ${statusColor};">${item.status || 'Đạt'}</td>
+          <td style="padding: 8px;">${item.note || ''}</td>
+        </tr>
+      `;
+    });
+  }
+
+  contentHtml += `
+        </tbody>
+      </table>
+
+      <h4 style="border-left: 4px solid #0d6efd; padding-left: 8px; margin-top: 25px;">II. XÁC NHẬN VÀ CHỮ KÝ</h4>
+      <div style="display: flex; justify-content: space-between; margin-top: 20px; text-align: center;">
+        <div style="width: 45%;">
+          <p><strong>NGƯỜI LẬP PHIẾU</strong></p>
+          <p style="font-size: 12px; color: #666;">(Ký và ghi rõ họ tên)</p>
+          <div style="margin-top: 15px;">
+            ${formData.signature ? `<img src="${formData.signature}" style="max-height: 100px; max-width: 200px; border: 1px dashed #ccc;" />` : '<i>(Chưa có chữ ký)</i>'}
+          </div>
+          <p style="margin-top: 10px; font-weight: bold;">${formData.submittedBy || ''}</p>
+        </div>
+        <div style="width: 45%;">
+          <p><strong>XÁC NHẬN CA TRỰC / KHÁCH HÀNG</strong></p>
+          <p style="font-size: 12px; color: #666;">(Ký và ghi rõ họ tên)</p>
+          <div style="height: 100px;"></div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.getElementById("viewFormModalBody").innerHTML = contentHtml;
+  const viewModal = new bootstrap.Modal(document.getElementById("viewFormModal"));
+  viewModal.show();
+}
+
+function downloadFormPDF(taskId) {
+  viewFormDetails(taskId);
+  setTimeout(() => {
+    const printContent = document.getElementById("pdf-content-area").innerHTML;
+    const printWindow = window.open('', '', 'height=800,width=1000');
+    printWindow.document.write('<html><head><title>Phieu_Bao_Tri_' + taskId + '</title>');
+    printWindow.document.write('<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">');
+    printWindow.document.write('</head><body>');
+    printWindow.document.write(printContent);
+    printWindow.document.write('</body></html>');
+    printWindow.document.close();
+    
+    setTimeout(() => {
+      printWindow.focus();
+      printWindow.print();
+      printWindow.close();
+    }, 500);
+  }, 300);
+}
     </script>
+  <!-- Modal hiển thị Form Bảo Trì kèm chữ ký -->
+<div class="modal fade" id="viewFormModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title">📄 Chi Tiết Form Bảo Trì Đã Ký</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="viewFormModalBody">
+        <!-- Dữ liệu form sẽ tự động hiển thị ở đây -->
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+        <button type="button" class="btn btn-danger" onclick="window.print()">🖨️ In / Lưu PDF</button>
+      </div>
+    </div>
+  </div>
+</div>
   </body>
 </html>
