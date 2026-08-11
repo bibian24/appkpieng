@@ -6470,14 +6470,153 @@ function viewFormDetails(taskId) {
   viewModal.show();
 }
 
+// ====== HÀM NÂNG CẤP: TÌM DỮ LIỆU FORM Ở TẤT CẢ VỊ TRÍ VÀ HIỂN THỊ / TẢI PDF ======
+
+// Hàm phụ: Tự động lục tìm dữ liệu Form ở mọi thuộc tính có thể có
+function getFormDataFromTask(taskId) {
+  const task = (state.tasks || []).find(t => String(t.id) === String(taskId));
+  if (!task) return { task: null, formData: null };
+
+  // 1. Tìm trực tiếp trong đối tượng task
+  let formData = task.submittedForm || task.form || task.formData || task.formDetails || task.formSubmission || task.maintenanceForm || task.form_data;
+
+  // 2. Nếu không thấy, tìm trong các mảng lưu trữ của state
+  if (!formData && Array.isArray(state.formSubmissions)) {
+    formData = state.formSubmissions.find(s => String(s.taskId) === String(taskId) || String(s.id) === String(task.formId));
+  }
+  if (!formData && Array.isArray(state.submittedForms)) {
+    formData = state.submittedForms.find(s => String(s.taskId) === String(taskId));
+  }
+  if (!formData && Array.isArray(state.forms)) {
+    formData = state.forms.find(f => String(f.taskId) === String(taskId));
+  }
+
+  return { task, formData };
+}
+
+// 1. HÀM XEM CHI TIẾT FORM BẢO TRÌ ĐÃ ĐIỀN (CÓ CHỮ KÝ)
+function viewFormDetails(taskId) {
+  const { task, formData } = getFormDataFromTask(taskId);
+
+  if (!task) {
+    alert("Không tìm thấy thông tin công việc!");
+    return;
+  }
+
+  if (!formData) {
+    alert("Phiếu bảo trì này chưa được ghi nhận nội dung! Vui lòng bấm nút 'Điền phiếu' (hoặc chọn Biểu mẫu) và thực hiện Bấm Lưu trước khi Xem hoặc Tải PDF.");
+    return;
+  }
+
+  // Chuẩn hóa dữ liệu hiển thị từ form
+  const systemName = formData.systemName || formData.system || task.system || 'Hệ thống kỹ thuật';
+  const templateTitle = formData.templateTitle || formData.title || formData.templateName || 'Phiếu bảo trì';
+  const submittedBy = formData.submittedBy || formData.author || formData.userName || task.assignee || 'Kỹ thuật viên';
+  const items = formData.items || formData.checklist || formData.questions || [];
+  const signature = formData.signature || formData.signImg || formData.signatureData || '';
+
+  let contentHtml = `
+    <div id="pdf-content-area" style="padding: 20px; font-family: Arial, sans-serif; background: #fff; color: #333;">
+      <div style="text-align: center; border-bottom: 2px solid #0d6efd; padding-bottom: 12px; margin-bottom: 20px;">
+        <h3 style="margin: 0; color: #0d6efd; text-transform: uppercase; font-weight: bold;">PHIẾU KIỂM TRA BẢO TRÌ BẢO DƯỠNG</h3>
+        <p style="margin: 6px 0 0 0; color: #555; font-size: 14px;">Hệ thống: <strong>${systemName}</strong> | Biểu mẫu: <strong>${templateTitle}</strong></p>
+      </div>
+
+      <table style="width: 100%; margin-bottom: 20px; font-size: 14px; line-height: 1.6;">
+        <tr>
+          <td><strong>Mã công việc:</strong> ${task.id}</td>
+          <td><strong>Ngày thực hiện:</strong> ${task.date || 'N/A'}</td>
+        </tr>
+        <tr>
+          <td><strong>Khu vực:</strong> ${task.location || 'N/A'}</td>
+          <td><strong>Người thực hiện:</strong> ${submittedBy}</td>
+        </tr>
+        <tr>
+          <td colspan="2"><strong>Nội dung công việc:</strong> ${task.content || task.title || 'Bảo trì định kỳ'}</td>
+        </tr>
+      </table>
+
+      <h5 style="border-left: 4px solid #0d6efd; padding-left: 8px; margin-top: 20px; font-weight: bold;">I. CHI TIẾT HẠNG MỤC KIỂM TRA</h5>
+      <table style="width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px;" border="1" borderColor="#ccc">
+        <thead>
+          <tr style="background-color: #f8f9fa;">
+            <th style="padding: 8px; text-align: center; width: 40px;">STT</th>
+            <th style="padding: 8px; text-align: left;">Hạng mục kiểm tra</th>
+            <th style="padding: 8px; text-align: center; width: 100px;">Kết quả</th>
+            <th style="padding: 8px; text-align: left;">Ghi chú</th>
+          </tr>
+        </thead>
+        <tbody>
+  `;
+
+  if (Array.isArray(items) && items.length > 0) {
+    items.forEach((item, idx) => {
+      const label = item.label || item.question || item.title || `Hạng mục ${idx + 1}`;
+      const status = item.status || item.result || item.value || 'Đạt';
+      const note = item.note || item.comment || '';
+      const isOk = status === 'Đạt' || status === 'OK' || status === 'Pass' || status === true;
+      const statusColor = isOk ? '#198754' : '#dc3545';
+
+      contentHtml += `
+        <tr>
+          <td style="padding: 8px; text-align: center;">${idx + 1}</td>
+          <td style="padding: 8px;">${label}</td>
+          <td style="padding: 8px; text-align: center; font-weight: bold; color: ${statusColor};">${status}</td>
+          <td style="padding: 8px;">${note}</td>
+        </tr>
+      `;
+    });
+  } else {
+    contentHtml += `
+      <tr>
+        <td colspan="4" style="padding: 12px; text-align: center; color: #777;">Đã xác nhận hoàn thành kiểm tra theo quy chuẩn.</td>
+      </tr>
+    `;
+  }
+
+  contentHtml += `
+        </tbody>
+      </table>
+
+      <h5 style="border-left: 4px solid #0d6efd; padding-left: 8px; margin-top: 25px; font-weight: bold;">II. XÁC NHẬN VÀ CHỮ KÝ</h5>
+      <div style="display: flex; justify-content: space-between; margin-top: 20px; text-align: center;">
+        <div style="width: 45%;">
+          <p style="margin-bottom: 5px;"><strong>NGƯỜI LẬP PHIẾU</strong></p>
+          <p style="font-size: 12px; color: #666; margin-top: 0;">(Ký và ghi rõ họ tên)</p>
+          <div style="margin-top: 10px; min-height: 90px; display: flex; align-items: center; justify-content: center;">
+            ${signature ? `<img src="${signature}" style="max-height: 90px; max-width: 180px; border: 1px dashed #bbb; padding: 2px;" />` : '<span style="color: #999; font-style: italic;">(Đã ký xác nhận điện tử)</span>'}
+          </div>
+          <p style="margin-top: 8px; font-weight: bold; color: #0d6efd;">${submittedBy}</p>
+        </div>
+        <div style="width: 45%;">
+          <p style="margin-bottom: 5px;"><strong>XÁC NHẬN CA TRỰC / KHÁCH HÀNG</strong></p>
+          <p style="font-size: 12px; color: #666; margin-top: 0;">(Ký và ghi rõ họ tên)</p>
+          <div style="min-height: 90px;"></div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.getElementById("viewFormModalBody").innerHTML = contentHtml;
+  const viewModal = new bootstrap.Modal(document.getElementById("viewFormModal"));
+  viewModal.show();
+}
+
+// 2. HÀM TẢI FORM BẢO TRÌ VỀ MÁY (XUẤT PDF / IN)
 function downloadFormPDF(taskId) {
+  const { formData } = getFormDataFromTask(taskId);
+  if (!formData) {
+    alert("Phiếu bảo trì này chưa được ghi nhận nội dung! Vui lòng bấm nút 'Điền phiếu' (hoặc chọn Biểu mẫu) và thực hiện Bấm Lưu trước khi Xem hoặc Tải PDF.");
+    return;
+  }
+  
   viewFormDetails(taskId);
   setTimeout(() => {
     const printContent = document.getElementById("pdf-content-area").innerHTML;
     const printWindow = window.open('', '', 'height=800,width=1000');
     printWindow.document.write('<html><head><title>Phieu_Bao_Tri_' + taskId + '</title>');
     printWindow.document.write('<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">');
-    printWindow.document.write('</head><body>');
+    printWindow.document.write('</head><body style="background:#fff;">');
     printWindow.document.write(printContent);
     printWindow.document.write('</body></html>');
     printWindow.document.close();
@@ -6487,7 +6626,7 @@ function downloadFormPDF(taskId) {
       printWindow.print();
       printWindow.close();
     }, 500);
-  }, 300);
+  }, 400);
 }
     </script>
   <!-- Modal hiển thị Form Bảo Trì kèm chữ ký -->
