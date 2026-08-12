@@ -1,0 +1,2155 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hệ Thống Quản Lý Kỹ Thuật & KPI V2.8 - Cloud Sync</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts Inter -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
+      rel="stylesheet"
+    />
+    <!-- FontAwesome Icons -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- SheetJS Excel Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- html2pdf Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <!-- jsPDF Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- html2canvas -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+    <!-- Firebase SDK v8 -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+    <!-- QR Code Reader Library -->
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: { sans: ["Inter", "sans-serif"] },
+          },
+        },
+      };
+    </script>
+
+    <style>
+      .shift-row-a {
+        background-color: #fff1f2 !important;
+      } /* Ca A - Hồng Nhạt */
+      .shift-row-b {
+        background-color: #fefbeb !important;
+      } /* Ca B - Vàng Nhạt */
+      .shift-row-c {
+        background-color: #f0fdf4 !important;
+      } /* Ca C - Xanh Lá Nhạt */
+      .shift-row-n {
+        background-color: #f5f3ff !important;
+      } /* Ca N - Tím Nhạt */
+
+      .shift-separator {
+        border-top: 4px solid #0f172a !important;
+      }
+
+      .tab-active {
+        border-bottom: 3px solid #2563eb;
+        color: #2563eb;
+        font-weight: 800;
+      }
+
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #f1f5f9;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+      }
+      table textarea {
+        overflow-y: hidden;
+        resize: none;
+        min-height: 0;
+      }
+      table {
+        border-collapse: separate !important;
+        border-spacing: 0 !important;
+      }
+      table td,
+      table th {
+        border-right: 1.3px solid #64748b !important;
+        border-bottom: 1.3px solid #64748b !important;
+      }
+      table th:first-child,
+      table td:first-child {
+        border-left: none;
+      }
+      table th,
+      table td {
+        border-top: none;
+      }
+      @media (max-width: 768px) {
+        .sticky-col {
+          position: relative !important;
+          left: 0 !important;
+        }
+      }
+    </style>
+  </head>
+  <body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col antialiased font-sans">
+    <!-- Toast & Confirm Modals -->
+    <div id="toast-container" class="fixed top-5 right-5 z-[9999] flex flex-col gap-2 pointer-events-none"></div>
+
+    <div id="custom-confirm-modal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+      <div class="bg-white rounded-3xl w-full max-w-sm p-6 space-y-4 shadow-2xl">
+        <div class="flex items-start gap-3">
+          <div class="bg-amber-100 text-amber-600 p-2.5 rounded-2xl">
+            <i class="fa-solid fa-triangle-exclamation text-xl"></i>
+          </div>
+          <div>
+            <h3 id="confirm-title" class="font-bold text-slate-900 text-base">Xác nhận</h3>
+            <p id="confirm-message" class="text-xs text-slate-500 mt-1"></p>
+          </div>
+        </div>
+        <div class="flex justify-end gap-2 pt-2 border-t border-slate-100">
+          <button id="confirm-cancel-btn" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-xs font-bold rounded-xl text-slate-600">Hủy</button>
+          <button id="confirm-ok-btn" class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-xs font-bold rounded-xl text-white">Xác nhận</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Login Container -->
+    <div id="login-container" class="fixed inset-0 flex items-center justify-center bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 z-50 p-4 transition-all duration-300">
+      <div class="bg-white/95 backdrop-blur-md p-8 rounded-3xl shadow-2xl w-full max-w-md border border-white/20">
+        <div class="mb-6 flex justify-center flex-col items-center">
+          <div class="bg-blue-600 text-white p-4 rounded-2xl shadow-lg shadow-blue-500/30 mb-3 animate-bounce">
+            <i class="fa-solid fa-helmet-safety text-4xl"></i>
+          </div>
+          <h1 class="text-2xl font-black text-slate-900 tracking-tight">KỸ THUẬT & KPI V2.8</h1>
+          <p class="text-xs text-slate-500 mt-1">Hệ thống Quản lý trực tuyến đám mây (Cloud Firestore)</p>
+          <div id="login-cloud-status-badge" class="mt-3 px-3 py-1 rounded-full text-[10px] font-black flex items-center gap-1.5 bg-amber-100 text-amber-800">
+            <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+            <span>ĐANG KHỞI CHẠY HỆ THỐNG...</span>
+          </div>
+        </div>
+
+        <form id="login-form" class="space-y-4">
+          <div>
+            <label class="block text-xs font-bold uppercase text-slate-500 mb-1">Thành viên (User)</label>
+            <div class="relative">
+              <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                <i class="fa-solid fa-user-circle"></i>
+              </span>
+              <select id="login-username-select" required class="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none text-sm font-bold text-slate-700 transition-all duration-200"></select>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold uppercase text-slate-500 mb-1">Mật khẩu (Password)</label>
+            <div class="relative">
+              <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                <i class="fa-solid fa-lock"></i>
+              </span>
+              <input type="password" id="login-password-input" required placeholder="Nhập mật khẩu..." class="w-full pl-10 pr-10 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none text-sm font-bold text-slate-700 transition-all duration-200" />
+              <button type="button" onclick="toggleLoginPasswordVisibility()" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600">
+                <i id="login-pass-toggle-icon" class="fa-solid fa-eye"></i>
+              </button>
+            </div>
+          </div>
+
+          <div class="pt-2">
+            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-bold text-sm tracking-wide shadow-lg shadow-blue-500/20 active:scale-[0.98] transition-all duration-150">ĐĂNG NHẬP HỆ THỐNG</button>
+            <div id="login-error-message" class="hidden mt-2 text-sm font-semibold text-rose-600 text-center">Mật khẩu hoặc tên đăng nhập sai</div>
+            <div id="pauseAppToast" class="hidden mt-2 w-full bg-rose-600 text-white py-3 px-4 rounded-xl font-bold text-sm tracking-wide shadow-lg shadow-rose-500/20 text-center"></div>
+          </div>
+        </form>
+        <div id="login-cloud-error-box" class="hidden mt-4 p-3 bg-rose-50 border border-rose-200 rounded-xl text-[11px] text-rose-800 space-y-1"></div>
+      </div>
+    </div>
+
+    <!-- Main Workspace -->
+    <div id="main-workspace" class="hidden flex flex-col min-h-screen">
+      <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm px-4 lg:px-8 py-3 flex flex-wrap justify-between items-center gap-4">
+        <div class="flex items-center gap-3">
+          <div class="bg-blue-600 text-white p-2 rounded-xl flex items-center justify-center shadow-md">
+            <i class="fa-solid fa-screwdriver-wrench text-lg"></i>
+          </div>
+          <div>
+            <h2 class="font-extrabold text-lg text-slate-900 tracking-tight flex items-center gap-2">V2.8 PRO MANAGEMENT</h2>
+            <div class="text-[11px] text-slate-400 flex items-center gap-1">
+              <span id="header-user-fullname" class="font-bold text-slate-600">Nạp dữ liệu...</span>
+              <span>(<span id="header-user-role" class="text-blue-600 font-semibold">Vai trò</span>)</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="relative">
+          <div id="menu-overlay" onclick="closeMenu()" class="fixed inset-0 bg-black/50 opacity-0 invisible transition-all duration-300 z-40 lg:hidden"></div>
+          <button onclick="toggleMenu()" class="fixed top-[5px] right-[5px] z-50 lg:hidden p-3"><i class="fa-solid fa-bars text-xl"></i></button>
+
+          <nav id="app-nav" class="fixed top-0 left-0 h-screen w-72 bg-white shadow-2xl p-5 z-50 flex flex-col -translate-x-full transition-transform duration-300 lg:static lg:h-auto lg:w-auto lg:translate-x-0 lg:flex-row lg:bg-slate-100 lg:shadow-none lg:p-1 lg:rounded-xl">
+            <button onclick="switchTab('weekly-plan')" id="tab-btn-weekly-plan" class="flex items-center gap-2 px-3 py-2 rounded-lg text-slate-600 hover:bg-white hover:text-slate-900 transition">
+              <i class="fa-solid fa-calendar-week text-blue-600"></i>
+              <span>WEEKLY PLAN</span>
+            </button>
+            <button onclick="switchTab('backlogs')" id="tab-btn-backlogs" class="flex items-center gap-2 px-3 py-2 rounded-lg text-slate-600 hover:bg-white hover:text-slate-900 transition">
+              <i class="fa-solid fa-triangle-exclamation text-amber-500"></i>
+              <span>TỒN ĐỌNG / PHÁT SINH</span>
+            </button>
+            <button onclick="switchTab('maintenance-forms')" id="tab-btn-maintenance-forms" class="flex items-center gap-2 px-3 py-2 rounded-lg text-slate-600 hover:bg-white hover:text-slate-900 transition">
+              <i class="fa-solid fa-file-invoice text-indigo-600"></i>
+              <span>FORM BẢO TRÌ</span>
+            </button>
+            <button onclick="switchTab('kpi-dashboard')" id="tab-btn-kpi-dashboard" class="flex items-center gap-2 px-3 py-2 rounded-lg text-slate-600 hover:bg-white hover:text-slate-900 transition">
+              <i class="fa-solid fa-chart-line text-emerald-600"></i>
+              <span>DASHBOARD KPI</span>
+            </button>
+            <button onclick="switchTab('admin-config')" id="tab-btn-admin-config" class="flex items-center gap-2 px-3 py-2 rounded-lg text-slate-600 hover:bg-white hover:text-slate-900 transition">
+              <i class="fa-solid fa-gears text-rose-600"></i>
+              <span>CẤU HÌNH ADMIN</span>
+            </button>
+          </nav>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <div id="header-cloud-status-badge" class="px-2.5 py-1 rounded-lg text-[10px] font-black bg-emerald-100 text-emerald-800 flex items-center gap-1.5">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span>ONLINE</span>
+          </div>
+
+          <div id="admin-bell-wrapper" class="hidden relative">
+            <button onclick="toggleAdminNotificationDropdown(event)" class="relative text-slate-600 hover:text-blue-600 bg-slate-100 p-2.5 rounded-xl transition duration-200">
+              <i class="fa-solid fa-bell text-sm"></i>
+              <span id="admin-bell-badge" class="hidden absolute -top-1 -right-1 bg-rose-500 text-white text-[9px] font-black w-4.5 h-4.5 rounded-full flex items-center justify-center animate-bounce">0</span>
+            </button>
+            <div id="admin-bell-dropdown" class="hidden absolute right-0 mt-2 bg-white border border-slate-200 shadow-2xl rounded-2xl p-3 z-50 w-[320px] space-y-2 text-left">
+              <div class="flex justify-between items-center border-b pb-1.5">
+                <span class="text-xs font-bold text-slate-700 flex items-center gap-1"><i class="fa-solid fa-bell text-blue-500"></i> Thông báo bảo trì mới</span>
+                <button onclick="markAllNotificationsRead(event)" class="text-[10px] text-blue-600 hover:underline font-bold">Đánh dấu đã đọc</button>
+              </div>
+              <div id="admin-bell-list" class="space-y-1.5 max-h-60 overflow-y-auto pr-1"></div>
+            </div>
+          </div>
+
+          <span id="idle-timer" class="text-xs text-slate-400 bg-slate-100 px-2.5 py-1 rounded-lg flex items-center gap-1">
+            <i class="fa-solid fa-hourglass-half"></i> Tự tắt: Không cài
+          </span>
+          <button onclick="logout()" class="text-rose-500 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 p-2.5 rounded-xl transition duration-200" title="Đăng xuất">
+            <i class="fa-solid fa-power-off text-sm"></i>
+          </button>
+        </div>
+      </header>
+
+      <div id="admin-notify-banner" class="hidden bg-indigo-50 border-b border-indigo-200 px-8 py-3 flex justify-between items-center text-sm text-indigo-900">
+        <div class="flex items-center gap-2">
+          <i class="fa-solid fa-bell text-indigo-600 animate-bounce"></i>
+          <span id="notify-msg">Không có thông báo mới.</span>
+        </div>
+        <button onclick="clearNotify()" class="text-indigo-400 hover:text-indigo-700 font-bold">X</button>
+      </div>
+
+      <main class="flex-grow p-4 lg:p-6 max-w-full overflow-hidden">
+        <!-- SECTION 1: WEEKLY PLAN -->
+        <section id="view-weekly-plan" class="hidden space-y-4">
+          <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-wrap justify-between items-center gap-4">
+            <div>
+              <h1 class="text-lg font-black text-slate-900 flex items-center gap-2 tracking-tight">
+                <i class="fa-solid fa-calendar-days text-blue-600"></i> BẢNG KẾ HOẠCH PHÂN CÔNG TUẦN (WEEKLY PLAN)
+              </h1>
+              <p class="text-xs text-slate-400 mt-1">Cột "Ngày" tự động gộp (rowspan) nếu trùng nhau. Tạo ngày trực kế tiếp hoặc tuần trực mới linh hoạt.</p>
+            </div>
+            <div class="flex flex-wrap items-center gap-3">
+              <div class="flex items-center gap-1.5 text-xs font-semibold text-slate-500 bg-slate-50 p-1.5 rounded-xl border">
+                <span>Lọc tuần:</span>
+                <select id="week-filter" onchange="changeActiveWeekFilter()" class="bg-white border rounded px-2 py-1 font-bold text-slate-700 outline-none"></select>
+                <button id="delete-week-btn" onclick="deleteCurrentWeek()" title="Xóa tuần đang chọn" class="ml-2 p-1.5 rounded-lg bg-rose-100 text-rose-600 hover:bg-rose-200 text-xs font-bold">
+                  <i class="fa-solid fa-trash-can"></i>
+                </button>
+              </div>
+              <button onclick="addNewWeeklyTaskRow()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3.5 py-2.5 rounded-xl shadow-md flex items-center gap-1.5">
+                <i class="fa-solid fa-plus"></i> Thêm việc cho ngày hiện tại
+              </button>
+              <button onclick="addNewNextDayTaskRow()" class="bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs px-3.5 py-2.5 rounded-xl shadow-md flex items-center gap-1.5">
+                <i class="fa-solid fa-calendar-day"></i> Tạo ngày trực kế tiếp
+              </button>
+              <button id="add-week-btn" onclick="createNewNextWeek()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-3.5 py-2.5 rounded-xl shadow-md flex items-center gap-1.5">
+                <i class="fa-solid fa-calendar-plus"></i> Tạo tuần trực kế tiếp
+              </button>
+              <button onclick="exportMonthlyReport()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-3.5 py-2.5 rounded-xl shadow-md flex items-center gap-1.5">
+                <i class="fa-solid fa-file-excel"></i> Tải Excel Tuần
+              </button>
+              <button id="visible-task-row-btn" onclick="document.getElementById('hidden-tasks-panel').classList.toggle('hidden'); renderHiddenTasksTable();" class="bg-slate-600 hover:bg-slate-700 text-white font-bold text-xs px-3.5 py-2.5 rounded-xl shadow-md flex items-center gap-1.5">
+                <i class="fa-solid fa-box-archive"></i> Việc đã ẩn
+                <span id="hidden-tasks-count" class="bg-white/20 rounded-full px-2 text-xs"></span>
+              </button>
+            </div>
+          </div>
+
+          <div id="hidden-tasks-panel" class="hidden mt-4 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="p-3 border-b bg-slate-50 font-bold text-sm">Danh sách công việc đã ẩn</div>
+            <table class="w-full text-left">
+              <thead class="bg-slate-50 text-[11px] uppercase text-slate-400">
+                <tr>
+                  <th class="p-2">Ngày</th>
+                  <th class="p-2">Ca</th>
+                  <th class="p-2">Nhóm</th>
+                  <th class="p-2">Nội dung</th>
+                  <th class="p-2 text-center">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody id="hidden-tasks-body"></tbody>
+            </table>
+          </div>
+
+          <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden relative">
+            <div class="overflow-auto w-full max-h-[70vh]">
+              <table class="text-left border-collapse" id="weekly-plan-table">
+                <thead>
+                  <tr class="bg-slate-50 text-slate-400 text-[11px] font-bold tracking-wider uppercase border-b border-slate-200">
+                    <th data-col="0" class="sticky top-0 z-20 bg-slate-50 w-[150px] p-3 text-center font-bold">
+                      <div class="flex items-center justify-between">
+                        <span>Ngày</span>
+                        <div class="flex items-center gap-1">
+                          <i data-freeze-pin onclick="setFreezeColumnCount(1)" class="fa-solid fa-thumbtack cursor-pointer text-slate-400 hover:text-blue-600"></i>
+                          <i onclick="setFreezeColumnCount(0)" class="fa-solid fa-xmark cursor-pointer text-red-500 hover:text-red-700"></i>
+                        </div>
+                      </div>
+                    </th>
+                    <th data-col="1" class="sticky top-0 z-20 bg-slate-50 w-[150px] p-3 text-center font-bold">
+                      <div class="flex items-center justify-between">
+                        <span>Ca làm</span>
+                        <div class="flex items-center gap-1">
+                          <i data-freeze-pin onclick="setFreezeColumnCount(2)" class="fa-solid fa-thumbtack cursor-pointer text-slate-400 hover:text-blue-600"></i>
+                          <i onclick="setFreezeColumnCount(1)" class="fa-solid fa-xmark cursor-pointer text-red-500 hover:text-red-700"></i>
+                        </div>
+                      </div>
+                    </th>
+                    <th data-col="2" class="sticky top-0 z-20 bg-slate-50 w-[150px] p-3 text-center font-bold">
+                      <div class="flex items-center justify-between">
+                        <span>Nhóm</span>
+                        <div class="flex items-center gap-1">
+                          <i data-freeze-pin onclick="setFreezeColumnCount(3)" class="fa-solid fa-thumbtack cursor-pointer text-slate-400 hover:text-blue-600"></i>
+                          <i onclick="setFreezeColumnCount(2)" class="fa-solid fa-xmark cursor-pointer text-red-500 hover:text-red-700"></i>
+                        </div>
+                      </div>
+                    </th>
+                    <th data-col="3" class="sticky top-0 z-20 bg-slate-50 w-[130px] p-3 text-center font-bold">Khu vực</th>
+                    <th data-col="4" class="sticky top-0 z-20 bg-slate-50 w-[130px] p-3 text-center font-bold">Nội dung công việc</th>
+                    <th data-col="5" class="sticky top-0 z-20 bg-slate-50 w-[130px] p-3 text-center font-bold">Minh chứng</th>
+                    <th data-col="6" class="sticky top-0 z-20 bg-slate-50 w-[130px] p-3 text-center font-bold">Form bảo trì</th>
+                    <th data-col="7" class="sticky top-0 z-20 bg-slate-50 w-[140px] p-3 text-center font-bold">Người thực hiện</th>
+                    <th data-col="8" class="sticky top-0 z-20 bg-slate-50 w-[140px] p-3 text-center font-bold">Tiến độ KPI</th>
+                    <th data-col="9" class="sticky top-0 z-20 bg-slate-50 w-[140px] p-3 text-center font-bold">Ghi chú & Google Sheet</th>
+                    <th data-col="10" class="sticky top-0 z-20 bg-slate-50 w-[100px] p-3 text-center font-bold">Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody id="weekly-plan-table-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- SECTION 2: BACKLOGS -->
+        <section id="view-backlogs" class="hidden space-y-4">
+          <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-wrap justify-between items-center gap-4">
+            <div>
+              <h1 class="text-lg font-black text-slate-900 flex items-center gap-2 tracking-tight">
+                <i class="fa-solid fa-clock-rotate-left text-amber-500"></i> CÔNG VIỆC TỒN ĐỌNG / PHÁT SINH
+              </h1>
+              <p class="text-xs text-slate-400 mt-1">Các công việc bàn giao chưa hoàn thành hoặc cần phân bổ kiểm tra bổ sung.</p>
+            </div>
+            <div class="flex gap-2">
+              <button onclick="createNewBacklogRow()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-md flex items-center gap-1.5">
+                <i class="fa-solid fa-plus"></i> Tạo dòng phát sinh mới
+              </button>
+              <button onclick="exportBacklogsReport()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-md flex items-center gap-1.5">
+                <i class="fa-solid fa-file-excel"></i> Xuất Tồn Đọng Excel
+              </button>
+            </div>
+          </div>
+
+          <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="overflow-x-auto w-full">
+              <table class="w-full text-left border-collapse table-fixed min-w-[1300px]">
+                <thead>
+                  <tr class="bg-slate-50 text-slate-400 text-[11px] font-bold tracking-wider uppercase border-b border-slate-200">
+                    <th class="w-[110px] p-3 text-center font-bold">Ngày</th>
+                    <th class="w-[100px] p-3 font-bold">Nhóm</th>
+                    <th class="w-[130px] p-3 font-bold">Khu vực</th>
+                    <th class="w-[300px] p-3 font-bold">Nội dung công việc</th>
+                    <th class="w-[150px] p-3 text-center font-bold">Ảnh</th>
+                    <th class="w-[180px] p-3 font-bold">Người thực hiện cũ</th>
+                    <th class="w-[110px] p-3 text-center font-bold">Trạng thái</th>
+                    <th class="w-[280px] p-3 font-bold text-indigo-600">Phân việc lại</th>
+                    <th class="w-[150px] p-3 font-bold">Ghi chú</th>
+                    <th class="w-[80px] p-3 text-center font-bold">Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody id="backlogs-table-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- SECTION 3: MAINTENANCE FORMS -->
+        <section id="view-maintenance-forms" class="hidden space-y-4">
+          <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            <div class="lg:col-span-1 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-4 flex flex-col">
+              <div class="flex justify-between items-center border-b pb-2">
+                <h4 class="font-bold text-slate-900 text-sm flex items-center gap-2">
+                  <i class="fa-solid fa-folder-open text-amber-500"></i> THƯ MỤC HỆ THỐNG
+                </h4>
+                <div class="flex gap-1">
+                  <button onclick="createFolder('root')" class="bg-slate-100 hover:bg-slate-200 p-1.5 rounded-lg text-slate-600 font-bold text-[10px]" title="Thêm folder cha">
+                    <i class="fa-solid fa-folder-plus text-amber-600"></i> Thêm thư mục
+                  </button>
+                  <button onclick="createSubFolder()" class="bg-slate-100 hover:bg-slate-200 p-1.5 rounded-lg text-slate-600 font-bold text-[10px]" title="Thêm folder con">
+                    <i class="fa-solid fa-folder-plus text-amber-600"></i> Thêm con
+                  </button>
+                </div>
+              </div>
+              <div class="space-y-1 overflow-y-auto max-h-[500px]" id="folders-tree-container"></div>
+            </div>
+
+            <div class="lg:col-span-3 space-y-6">
+              <div class="grid grid-cols-1 xl:grid-cols-5 gap-6">
+                <div class="xl:col-span-3 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                  <div class="flex justify-between items-center border-b pb-2">
+                    <h3 class="font-extrabold text-slate-900 text-sm flex items-center gap-2">
+                      <i class="fa-solid fa-pen-ruler text-indigo-600"></i> Thiết kế Form Bảo Trì (V2.8)
+                    </h3>
+                    <span class="text-[10px] text-slate-400 font-bold bg-slate-100 px-2 py-0.5 rounded-full">Tùy biến cao</span>
+                  </div>
+                  <div class="space-y-3 text-xs">
+                    <div>
+                      <label class="block text-[10px] font-bold text-slate-400 mb-0.5 uppercase">Tên Form hệ thống</label>
+                      <input type="text" id="new-template-name" placeholder="Ví dụ: COOLING TOWER, MÁY PHÁT ĐIỆN" class="w-full p-2 border rounded-xl bg-slate-50 font-bold text-slate-800 focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none" />
+                    </div>
+                    <div>
+                      <label class="block text-[10px] font-bold text-slate-400 mb-0.5 uppercase">Thư Mục Chỉ Định Lưu Trữ</label>
+                      <select id="new-template-system" onchange="updateTemplateStorageFolderOptions()" class="w-full p-2 border rounded-xl bg-slate-50 font-bold text-slate-700"></select>
+                    </div>
+                    <div>
+                      <label class="block text-[10px] font-bold text-slate-400 mb-0.5 uppercase">Thư Mục Con Lưu Trữ</label>
+                      <select id="new-template-child-system" class="w-full p-2 border rounded-xl bg-slate-50 font-bold text-slate-700">
+                        <option value="">Không chọn (dùng thư mục cha)</option>
+                      </select>
+                    </div>
+
+                    <div class="border-t pt-3 space-y-3">
+                      <span class="block text-[10px] font-black text-indigo-600 uppercase tracking-wider">HẠNG MỤC KIỂM TRA & CÂU HỎI</span>
+                      <div id="new-template-questions" class="space-y-4 max-h-96 overflow-y-auto pr-1"></div>
+                      <button onclick="addNewQuestionInput()" class="w-full py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 hover:text-indigo-800 text-xs font-bold rounded-xl border border-dashed border-indigo-200 flex items-center justify-center gap-1.5 transition">
+                        <i class="fa-solid fa-plus-circle"></i> Thêm bước kiểm tra mới
+                      </button>
+                    </div>
+                    <button onclick="saveFormTemplate()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl text-xs shadow-md transition mt-2">TẠO BIỂU MẪU MỚI</button>
+                  </div>
+                </div>
+
+                <div class="xl:col-span-2 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                  <div>
+                    <h3 class="font-extrabold text-slate-900 text-sm flex items-center gap-2 border-b pb-2">
+                      <i class="fa-solid fa-list-check text-slate-600"></i> Thư viện biểu mẫu sẵn có
+                    </h3>
+                    <div id="templates-list" class="space-y-3 max-h-[500px] overflow-y-auto mt-2 pr-1"></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                <div class="flex justify-between items-center border-b pb-2">
+                  <h3 class="font-extrabold text-slate-900 text-sm flex items-center gap-2">
+                    <i class="fa-solid fa-folder-open text-indigo-600"></i> Các phiếu đã nộp trong thư mục:
+                    <span id="current-selected-folder-title" class="text-blue-600 font-black">Hệ điện</span>
+                  </h3>
+                  <div class="flex items-center gap-4">
+                    <button onclick="printAllInFolder()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs px-3 py-1.5 rounded-lg flex items-center gap-1">
+                      <i class="fa-solid fa-print"></i> Tải PDF hàng loạt
+                    </button>
+                    <select onchange="renderSubmittedFormsList(this.value)" id="filterFormSubmitOfMonth" class="px-4 py-2 border border-slate-300 rounded-xl bg-white text-slate-700 font-semibold text-sm shadow-sm hover:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
+                      <option value="">📅 Lọc form theo tháng</option>
+                      <option value="1">Tháng 1</option><option value="2">Tháng 2</option><option value="3">Tháng 3</option><option value="4">Tháng 4</option><option value="5">Tháng 5</option><option value="6">Tháng 6</option><option value="7">Tháng 7</option><option value="8">Tháng 8</option><option value="9">Tháng 9</option><option value="10">Tháng 10</option><option value="11">Tháng 11</option><option value="12">Tháng 12</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-96 overflow-y-auto pr-1" id="submitted-forms-list"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- SECTION 4: KPI DASHBOARD -->
+        <section id="view-kpi-dashboard" class="hidden space-y-4">
+          <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-wrap justify-between items-center gap-4">
+            <div>
+              <h1 class="text-lg font-black text-slate-900 flex items-center gap-2 tracking-tight">
+                <i class="fa-solid fa-chart-line text-emerald-600"></i> THÀNH TÍCH VÀ ĐIỂM SỐ KPI KỸ THUẬT
+              </h1>
+              <p class="text-xs text-slate-400 mt-1">Đánh giá xếp hạng dựa trên trung bình hiệu suất KPI (%) và Điểm thái độ chi tiết (1-5).</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <select id="kpi-month-filter" onchange="renderKpiDashboard()" class="bg-slate-50 border rounded-xl px-3 py-2 text-xs font-bold text-slate-700 outline-none">
+                <option value="2026-06">Tháng 06/2026</option>
+                <option value="2026-05">Tháng 05/2026</option>
+              </select>
+              <button onclick="exportAdvancedSummaryExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-md flex items-center gap-1.5">
+                <i class="fa-solid fa-file-excel"></i> Tải Bảng Vinh Danh Excel
+              </button>
+              <button onclick="archiveMonthKPI()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-3 py-2.5 rounded-xl shadow-md">Chốt KPI Tháng</button>
+            </div>
+          </div>
+
+          <!-- BẢNG VINH DANH CHUYÊN SÂU -->
+          <div class="bg-gradient-to-r from-amber-500 via-yellow-500 to-orange-500 p-6 rounded-3xl text-white shadow-xl space-y-4">
+            <h2 class="text-base font-extrabold tracking-wider text-center flex items-center justify-center gap-2">
+              <i class="fa-solid fa-trophy text-2xl animate-bounce text-yellow-200"></i>
+              BẢNG XẾP HẠNG THÀNH TÍCH VÀNG - NHÂN VIÊN XUẤT SẮC THÁNG
+              <i class="fa-solid fa-medal text-2xl text-yellow-200"></i>
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div class="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/20 text-center space-y-2">
+                <div class="text-[10px] font-black tracking-widest text-yellow-200 uppercase">DUTY ENGINEER TIÊU BIỂU</div>
+                <div class="text-4xl text-yellow-300"><i class="fa-solid fa-crown"></i></div>
+                <div id="out-duty-name" class="font-extrabold text-base">-</div>
+                <div id="out-duty-score" class="text-xs text-white/90 font-medium">Đang tính điểm...</div>
+              </div>
+              <div class="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/20 text-center space-y-2">
+                <div class="text-[10px] font-black tracking-widest text-yellow-200 uppercase">TECHNICIAN TIÊU BIỂU</div>
+                <div class="text-4xl text-yellow-300"><i class="fa-solid fa-star"></i></div>
+                <div id="out-tech-name" class="font-extrabold text-base">-</div>
+                <div id="out-tech-score" class="text-xs text-white/90 font-medium">Đang tính điểm...</div>
+              </div>
+              <div class="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/20 text-center space-y-2">
+                <div class="text-[10px] font-black tracking-widest text-yellow-200 uppercase">CARPENTER TIÊU BIỂU</div>
+                <div class="text-4xl text-yellow-300"><i class="fa-solid fa-award"></i></div>
+                <div id="out-carp-name" class="font-extrabold text-base">-</div>
+                <div id="out-carp-score" class="text-xs text-white/90 font-medium">Đang tính điểm...</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex justify-end mb-4">
+            <button onclick="exportMonthlySummaryExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm px-5 py-3 rounded-xl shadow-lg transition-all duration-200 flex items-center gap-2 hover:scale-105">
+              <i class="fa-solid fa-file-excel"></i> Xuất thống kê tháng
+            </button>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div class="bg-gradient-to-br from-indigo-500 to-indigo-600 p-5 rounded-2xl text-white shadow-md flex items-center gap-4">
+              <div class="bg-white/20 p-3 rounded-xl text-3xl"><i class="fa-solid fa-handshake"></i></div>
+              <div>
+                <span class="block text-[10px] font-bold uppercase tracking-wider text-indigo-200">Bàn giao nhiều nhất</span>
+                <span id="stat-most-handovers-user" class="block font-black text-base">-</span>
+                <span id="stat-most-handovers-count" class="block text-xs text-indigo-100 mt-0.5">0 công việc</span>
+              </div>
+            </div>
+            <div class="bg-gradient-to-br from-rose-500 to-rose-600 p-5 rounded-2xl text-white shadow-md flex items-center gap-4">
+              <div class="bg-white/20 p-3 rounded-xl text-3xl"><i class="fa-solid fa-rotate-left"></i></div>
+              <div>
+                <span class="block text-[10px] font-bold uppercase tracking-wider text-rose-200">Làm lại nhiều nhất</span>
+                <span id="stat-most-redos-user" class="block font-black text-base">-</span>
+                <span id="stat-most-redos-count" class="block text-xs text-rose-100 mt-0.5">0 công việc</span>
+              </div>
+            </div>
+            <div class="bg-gradient-to-br from-amber-500 to-amber-600 p-5 rounded-2xl text-white shadow-md flex items-center gap-4">
+              <div class="bg-white/20 p-3 rounded-xl text-3xl"><i class="fa-solid fa-bolt"></i></div>
+              <div>
+                <span class="block text-[10px] font-bold uppercase tracking-wider text-amber-200">Hoàn thành nhiều nhất / ca</span>
+                <span id="stat-most-completions-shift-user" class="block font-black text-base">-</span>
+                <span id="stat-most-completions-shift-count" class="block text-xs text-amber-100 mt-0.5">0 công việc</span>
+              </div>
+            </div>
+            <div class="bg-gradient-to-br from-emerald-500 to-emerald-600 p-5 rounded-2xl text-white shadow-md flex items-center gap-4">
+              <div class="bg-white/20 p-3 rounded-xl text-3xl"><i class="fa-solid fa-circle-check"></i></div>
+              <div>
+                <span class="block text-[10px] font-bold uppercase tracking-wider text-emerald-200">Hoàn thành nhiều nhất / Tháng</span>
+                <span id="stat-most-completions-month-user" class="block font-black text-base">-</span>
+                <span id="stat-most-completions-month-count" class="block text-xs text-emerald-100 mt-0.5">0 công việc</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between h-[340px]">
+              <h4 class="font-extrabold text-xs text-slate-500 uppercase tracking-wider">DUTY ENGINEER RANKING CHART</h4>
+              <div class="relative flex-grow h-64 mt-2"><canvas id="kpiDutyChart"></canvas></div>
+            </div>
+            <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between h-[340px]">
+              <h4 class="font-extrabold text-xs text-slate-500 uppercase tracking-wider">TECHNICIAN RANKING CHART</h4>
+              <div class="relative flex-grow h-64 mt-2"><canvas id="kpiTechChart"></canvas></div>
+            </div>
+            <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between h-[340px]">
+              <h4 class="font-extrabold text-xs text-slate-500 uppercase tracking-wider">CARPENTER RANKING CHART</h4>
+              <div class="relative flex-grow h-64 mt-2"><canvas id="kpiCarpenterChart"></canvas></div>
+            </div>
+          </div>
+
+          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+            <div class="flex justify-between items-center border-b pb-2">
+              <h3 class="font-extrabold text-slate-900 text-sm flex items-center gap-2">
+                <i class="fa-solid fa-clipboard-user text-blue-600"></i> Đánh giá thái độ & Xếp hạng tích hợp (KPI % + Điểm Thái độ)
+              </h3>
+              <div class="flex gap-2">
+                <button onclick="downloadKpiSheetSum()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3 py-1.5 rounded-lg flex items-center gap-1">
+                  <i class="fa-solid fa-file-excel"></i> Xuất Excel KPI Tổng Hợp
+                </button>
+                <button onclick="downloadKpiSheetIndividual()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-3 py-1.5 rounded-lg flex items-center gap-1">
+                  <i class="fa-solid fa-user-tag"></i> Xuất Excel KPI Cá Nhân
+                </button>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+              <div class="space-y-3">
+                <span class="block text-xs font-black text-indigo-700 uppercase bg-indigo-50 px-2.5 py-1 rounded-lg">Duty Engineer</span>
+                <div class="overflow-x-auto">
+                  <table class="w-full text-left text-[11px] border-collapse min-w-[340px]">
+                    <thead>
+                      <tr class="bg-slate-50 border-b">
+                        <th class="p-2">Họ & Tên</th>
+                        <th class="p-2 text-center font-bold">KPI %</th>
+                        <th class="p-2 text-center font-bold">Thái độ</th>
+                        <th class="p-2 text-center font-bold">Xếp Hạng</th>
+                      </tr>
+                    </thead>
+                    <tbody id="kpi-group-duty"></tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div class="space-y-3">
+                <span class="block text-xs font-black text-emerald-700 uppercase bg-emerald-50 px-2.5 py-1 rounded-lg">Technician</span>
+                <div class="overflow-x-auto">
+                  <table class="w-full text-left text-[11px] border-collapse min-w-[340px]">
+                    <thead>
+                      <tr class="bg-slate-50 border-b">
+                        <th class="p-2">Họ & Tên</th>
+                        <th class="p-2 text-center font-bold">KPI %</th>
+                        <th class="p-2 text-center font-bold">Thái độ</th>
+                        <th class="p-2 text-center font-bold">Xếp Hạng</th>
+                      </tr>
+                    </thead>
+                    <tbody id="kpi-group-tech"></tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div class="space-y-3">
+                <span class="block text-xs font-black text-rose-700 uppercase bg-rose-50 px-2.5 py-1 rounded-lg">Carpenter</span>
+                <div class="overflow-x-auto">
+                  <table class="w-full text-left text-[11px] border-collapse min-w-[340px]">
+                    <thead>
+                      <tr class="bg-slate-50 border-b">
+                        <th class="p-2">Họ & Tên</th>
+                        <th class="p-2 text-center font-bold">KPI %</th>
+                        <th class="p-2 text-center font-bold">Thái độ</th>
+                        <th class="p-2 text-center font-bold">Xếp Hạng</th>
+                      </tr>
+                    </thead>
+                    <tbody id="kpi-group-carpenter"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+            <div class="flex flex-wrap justify-between items-center border-b pb-2 gap-2">
+              <h3 class="font-extrabold text-slate-900 text-sm flex items-center gap-2">
+                <i class="fa-solid fa-list-check text-indigo-600"></i> Nhật ký công việc chi tiết trong tháng
+              </h3>
+              <div class="flex items-center gap-2">
+                <button onclick="downloadSelectedMemberMonthlyTasks()" class="bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs px-3 py-1.5 rounded-lg flex items-center gap-1.5 shadow-sm transition">
+                  <i class="fa-solid fa-file-excel"></i> Tải từng lịch sử
+                </button>
+                <button onclick="downloadAllMembersMonthlyTasks()" class="bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs px-3 py-1.5 rounded-lg flex items-center gap-1.5 shadow-sm transition">
+                  <i class="fa-solid fa-file-excel"></i> Tải toàn bộ
+                </button>
+              </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div class="md:col-span-1 border-r pr-4 max-h-[350px] overflow-y-auto space-y-1" id="members-list-selection-kpi"></div>
+              <div class="md:col-span-3">
+                <div class="overflow-x-auto">
+                  <table class="w-full border-[1.3px] text-left text-xs border-collapse">
+                    <thead>
+                      <tr class="bg-slate-50 font-bold text-slate-500 uppercase border-b">
+                        <th class="p-2.5 w-32">Ngày</th>
+                        <th class="p-2.5 w-24">Ca trực</th>
+                        <th class="p-2.5 w-44">Khu vực</th>
+                        <th class="p-2.5">Nội dung công việc</th>
+                        <th class="p-2.5 w-36 text-center">Trạng thái</th>
+                      </tr>
+                    </thead>
+                    <tbody id="monthly-tasks-details-table"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- SECTION 5: ADMIN CONFIG -->
+        <section id="view-admin-config" class="hidden space-y-4">
+          <div class="grid grid-cols-3 lg:grid-cols-4 gap-6">
+            <div class="lg:col-span-2 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+              <h2 class="font-extrabold text-slate-900 text-sm flex items-center gap-2 border-b pb-2">
+                <i class="fa-solid fa-sliders text-blue-600"></i> Thiết lập chức năng hệ thống
+              </h2>
+              <div class="space-y-3 text-xs">
+                <div>
+                  <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Tự động ngắt phiên làm việc</label>
+                  <select id="admin-auto-off" onchange="updateSystemSettings()" class="w-full p-2 border rounded-xl bg-slate-50 font-bold">
+                    <option value="never">Không bao giờ</option>
+                    <option value="30m">Sau 30 phút</option>
+                    <option value="1h">Sau 1 tiếng</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Thông báo nộp form bảo trì</label>
+                  <select id="admin-notify-on-submit" onchange="updateSystemSettings()" class="w-full p-2 border rounded-xl bg-slate-50 font-bold">
+                    <option value="on">Bật (Báo lên màn hình ngay)</option>
+                    <option value="off">Tắt</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="border-t pt-3 space-y-2">
+                <span class="block text-[10px] font-bold text-slate-400 uppercase">Ẩn / Hiện chức năng với nhân viên</span>
+                <div class="flex flex-col gap-2 text-xs font-semibold">
+                  <label class="flex items-center gap-2 cursor-pointer bg-slate-50 px-3 py-2 rounded-xl border">
+                    <input type="checkbox" id="perm-kpi" onchange="updateSystemSettings()" class="rounded text-blue-600" />
+                    <span>Cho phép nhân viên xem TAB KPI</span>
+                  </label>
+                  <label class="flex items-center gap-2 cursor-pointer bg-slate-50 px-3 py-2 rounded-xl border">
+                    <input type="checkbox" id="perm-forms" onchange="updateSystemSettings()" class="rounded text-blue-600" />
+                    <span>Cho phép nhân viên xem TAB FORM BẢO TRÌ</span>
+                  </label>
+                </div>
+              </div>
+
+              <div class="border-t pt-3 space-y-2 text-xs">
+                <span class="block text-[10px] font-bold text-slate-400 uppercase">Vùng khôi phục/Bảo trì dữ liệu</span>
+                <div class="flex flex-wrap gap-2 sm:gap-3 items-center justify-start">
+                  <button onclick="pauseApplication()" class="w-[calc(50%-4px)] sm:w-auto bg-amber-500 hover:bg-amber-600 text-white font-bold text-sm py-2 px-3.5 rounded-lg transition-colors">Tạm dừng bảo trì</button>
+                  <button onclick="resetApplicationStorage()" class="w-[calc(50%-4px)] sm:w-auto bg-rose-600 hover:bg-rose-700 text-white font-bold text-sm py-2 px-3.5 rounded-lg transition-colors">Khôi phục gốc</button>
+                  <button onclick="backupSystem()" class="w-[calc(50%-4px)] sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm py-2 px-3.5 rounded-lg flex items-center justify-center gap-1.5 transition-colors">
+                    <i class="fa-solid fa-download"></i> Sao lưu dữ liệu
+                  </button>
+                  <button onclick="document.getElementById('restore-backup-input').click()" class="w-[calc(50%-4px)] sm:w-auto bg-amber-600 hover:bg-amber-700 text-white font-bold text-sm py-2 px-3.5 rounded-lg flex items-center justify-center gap-1.5 shadow-sm transition-colors">
+                    <i class="fa-solid fa-upload"></i> Khôi phục dữ liệu
+                  </button>
+                  <input id="restore-backup-input" type="file" accept=".json" hidden onchange="restoreBackup(this)" />
+                </div>
+              </div>
+            </div>
+
+            <div class="lg:col-span-2 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+              <div class="flex justify-between items-center border-b pb-2">
+                <h2 class="font-extrabold text-slate-900 text-sm flex items-center gap-2">
+                  <i class="fa-solid fa-users-gear text-emerald-600"></i> Quản lý danh sách tài khoản nhân viên
+                </h2>
+                <button onclick="openAddMemberModal()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3 py-1.5 rounded-lg flex items-center gap-1">
+                  <i class="fa-solid fa-user-plus"></i> Thêm Nhân Viên Mới
+                </button>
+              </div>
+              <div class="overflow-y-auto max-h-[300px]">
+                <table class="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr class="bg-slate-50 text-slate-400 font-bold uppercase border-b border-slate-200">
+                      <th class="p-2">Họ & Tên</th>
+                      <th class="p-2">Chức vụ / Nhóm</th>
+                      <th class="p-2">Vai trò hệ thống</th>
+                      <th class="p-2">Đổi mật khẩu mới</th>
+                      <th class="p-2 text-center">Xóa bỏ</th>
+                    </tr>
+                  </thead>
+                  <tbody id="members-list-table"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+            <div class="flex flex-wrap justify-between items-center border-b pb-3 gap-3">
+              <h2 class="font-extrabold text-slate-900 text-sm flex items-center gap-2">
+                <i class="fa-solid fa-history text-indigo-600"></i> Nhật Ký Chỉnh Sửa & Hoạt Động Hệ Thống
+              </h2>
+              <div class="flex flex-wrap items-center gap-2 bg-slate-50 p-2 rounded-xl border border-slate-200">
+                <span class="text-[10px] font-bold text-slate-500 uppercase">Xuất nhật ký:</span>
+                <select id="log-export-user" onchange="renderAuditLogTable()" class="p-1.5 border rounded-lg bg-white text-xs font-bold text-slate-700 outline-none"></select>
+                <input type="date" id="log-export-date" onchange="renderAuditLogTable()" class="p-1.5 border rounded-lg bg-white text-xs font-bold text-slate-700 outline-none" />
+                <button onclick="exportDailyUserLog()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold text-[11px] px-3 py-1.5 rounded-lg flex items-center gap-1 shadow-sm transition">
+                  <i class="fa-solid fa-download"></i> Tải Log Ngày
+                </button>
+                <button onclick="clearAuditLogFilters()" class="bg-slate-400 hover:bg-slate-500 text-white font-bold text-[11px] px-3 py-1.5 rounded-lg flex items-center gap-1 shadow-sm transition">
+                  <i class="fa-solid fa-trash-alt"></i> Xoá bộ lọc
+                </button>
+              </div>
+            </div>
+            <div class="overflow-y-auto max-h-52">
+              <table class="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr class="bg-slate-50 text-slate-400 font-bold border-b">
+                    <th class="p-2 w-40">Thời gian</th>
+                    <th class="p-2 w-44">Tài khoản thực hiện</th>
+                    <th class="p-2 w-56">Hành động</th>
+                    <th class="p-2">Chi tiết thao tác lưu dữ liệu</th>
+                  </tr>
+                </thead>
+                <tbody id="audit-logs-table-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <!-- Photo Preview Modal -->
+    <div id="photo-preview-modal" class="fixed inset-0 bg-black/70 hidden items-center justify-center z-[9999]" onclick="closePhotoPreview()">
+      <div class="bg-white rounded-2xl p-4 shadow-2xl relative" onclick="event.stopPropagation()">
+        <button onclick="closePhotoPreview()" class="absolute top-2 right-3 text-2xl font-bold text-slate-500 hover:text-red-500">×</button>
+        <img id="photo-preview-img" class="w-[550px] h-[550px] object-contain rounded-xl" src="" />
+      </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="modal-add-member" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+      <div class="bg-white rounded-3xl w-full max-w-sm p-6 space-y-4 shadow-2xl">
+        <div class="flex justify-between items-center border-b pb-3">
+          <h3 class="font-black text-slate-900 text-base">Thêm Tài Khoản Nhân Viên</h3>
+          <button onclick="closeAddMemberModal()" class="text-slate-400 hover:text-slate-600 text-lg">&times;</button>
+        </div>
+        <div class="space-y-3 text-xs">
+          <div>
+            <label class="block font-bold mb-1">Họ và Tên</label>
+            <input type="text" id="add-mem-fullname" placeholder="Nhập họ và tên" class="w-full p-2 border rounded bg-slate-50 font-bold" />
+          </div>
+          <div>
+            <label class="block font-bold mb-1">Username đăng nhập</label>
+            <input type="text" id="add-mem-user" placeholder="Ví dụ: longtd" class="w-full p-2 border rounded bg-slate-50 font-bold" />
+          </div>
+          <div>
+            <label class="block font-bold mb-1">Mật khẩu ban đầu</label>
+            <input type="text" id="add-mem-pass" value="123" class="w-full p-2 border rounded bg-slate-50 font-bold" />
+          </div>
+          <div>
+            <label class="block font-bold mb-1">Nhóm kỹ thuật</label>
+            <select id="add-mem-title" class="w-full p-2 border rounded bg-slate-50 font-bold">
+              <option value="Duty Engineer">Duty Engineer</option>
+              <option value="Technician">Technician</option>
+              <option value="Carpenter">Carpenter</option>
+              <option value="Admin">Admin</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-bold mb-1">Quyền hạn hệ thống</label>
+            <select id="add-mem-role" class="w-full p-2 border rounded bg-slate-50 font-bold">
+              <option value="Thành viên">Thành viên</option>
+              <option value="Admin">Admin</option>
+              <option value="Super Admin">Super Admin</option>
+            </select>
+          </div>
+        </div>
+        <div class="flex justify-end gap-2 pt-3 border-t">
+          <button onclick="closeAddMemberModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-xs font-bold rounded-xl text-slate-600">Hủy</button>
+          <button onclick="saveNewMember()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-xs font-bold rounded-xl text-white">Lưu Tài Khoản</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="modal-preview-form" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+      <div class="bg-white rounded-3xl w-full max-w-xl p-6 space-y-4 shadow-2xl overflow-y-auto max-h-[90vh]">
+        <div class="flex justify-between items-center border-b pb-3">
+          <h3 class="font-black text-slate-900 text-base" id="preview-form-title">Xem Trước Biểu Mẫu</h3>
+          <button onclick="closePreviewFormModal()" class="text-slate-400 hover:text-slate-600 text-lg">&times;</button>
+        </div>
+        <div id="preview-form-content" class="space-y-4 text-xs pr-1"></div>
+        <div class="flex justify-end gap-2 pt-3 border-t">
+          <button onclick="closePreviewFormModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-xs font-bold rounded-xl text-slate-600">Đóng</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Fill Form Modal -->
+    <div id="modal-fill-form" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 overflow-y-auto">
+      <div class="bg-white rounded-3xl w-full max-w-2xl p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div class="flex justify-between items-center border-b pb-3">
+          <h3 class="font-black text-slate-900 text-lg" id="fill-form-title">Điền Phiếu Kiểm Tra Bảo Trì</h3>
+          <button onclick="closeFillFormModal()" class="text-slate-400 hover:text-slate-600 text-lg">&times;</button>
+        </div>
+
+        <form id="active-maintenance-form" class="space-y-4 text-xs">
+          <div class="grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded-xl border">
+            <div>
+              <span class="block font-semibold text-slate-500">Ngày làm việc:</span>
+              <span id="fill-form-date" class="font-bold text-slate-800">-</span>
+            </div>
+          </div>
+          <div>
+            <label class="block text-[10px] font-bold text-slate-400 mb-0.5 uppercase">Tên thiết bị</label>
+            <input type="text" id="fill-form-new-template-equitment-name" placeholder="Ví dụ: Chiller 1,..." class="w-full p-2 border rounded-xl bg-slate-50 font-bold text-slate-800 focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none" />
+            <div class="flex items-center gap-2 mt-2">
+              <button type="button" onclick="openQrScanner()" class="flex items-center justify-center w-9 h-9 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 transition-colors" title="Quét QR">
+                <i class="fa-solid fa-qrcode text-base"></i>
+              </button>
+              <input type="file" id="qr-image-input" accept="image/*" onchange="scanQrFromImage(this)" hidden />
+              <button type="button" onclick="document.getElementById('qr-image-input').click()" class="flex items-center gap-1.5 px-4 h-9 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-medium transition-colors">
+                <i class="fa-solid fa-image"></i>
+                <span>Tải ảnh QR</span>
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <span class="block text-sm font-bold text-slate-900 mb-2">Hạng mục kiểm tra chi tiết:</span>
+            <div id="fill-form-checklist-container" class="space-y-4"></div>
+          </div>
+
+          <div>
+            <label class="block font-bold mb-1">Ảnh minh chứng hiện trạng công việc:</label>
+            <input type="file" id="fill-form-photos" multiple accept="image/*" class="w-full p-1.5 border rounded bg-slate-50 text-xs" onchange="previewFormPhotos(this)" />
+            <div id="fill-form-photos-preview" class="flex flex-wrap gap-2 mt-2"></div>
+          </div>
+
+          <div class="space-y-3 border-t pt-3">
+            <span class="block text-sm font-bold text-slate-900">Ký xác nhận nghiệm thu trực tiếp:</span>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div class="p-3 bg-slate-50 border rounded-xl space-y-2">
+                <label class="block font-bold">1. Nhân viên thực hiện:</label>
+                <select id="fill-form-tech-select" class="w-full p-1.5 border rounded bg-white text-xs font-semibold"></select>
+                <div class="border rounded bg-white p-1">
+                  <canvas id="signature-tech" class="border bg-slate-100 rounded cursor-crosshair w-full h-24"></canvas>
+                </div>
+                <button type="button" onclick="clearSig('tech')" class="text-rose-500 hover:underline text-[10px] font-semibold">Xóa ký lại</button>
+              </div>
+
+              <div class="p-3 bg-slate-50 border rounded-xl space-y-2">
+                <label class="block font-bold">2. Trưởng ca kỹ thuật:</label>
+                <select id="fill-form-duty-select" class="w-full p-1.5 border rounded bg-white text-xs font-semibold"></select>
+                <div class="border rounded bg-white p-1">
+                  <canvas id="signature-duty" class="border bg-slate-100 rounded cursor-crosshair w-full h-24"></canvas>
+                </div>
+                <button type="button" onclick="clearSig('duty')" class="text-rose-500 hover:underline text-[10px] font-semibold">Xóa ký lại</button>
+              </div>
+
+              <div class="p-3 bg-slate-50 border rounded-xl space-y-2">
+                <label class="block font-bold">3. Đối tác giám sát:</label>
+                <input type="text" id="fill-form-thirdparty-name" placeholder="Tên đơn vị..." class="w-full p-1.5 border rounded bg-white text-xs font-semibold" />
+                <div class="border rounded bg-white p-1">
+                  <canvas id="signature-thirdparty" class="border bg-slate-100 rounded cursor-crosshair w-full h-24"></canvas>
+                </div>
+                <button type="button" onclick="clearSig('thirdparty')" class="text-rose-500 hover:underline text-[10px] font-semibold">Xóa ký lại</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex justify-end gap-2 pt-3 border-t">
+            <button type="button" onclick="closeFillFormModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-xs font-bold rounded-xl text-slate-600">Hủy</button>
+            <button type="button" onclick="submitCompletedMaintenanceForm(event)" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-xs font-bold rounded-xl text-white">LƯU PHIẾU BẢO TRÌ</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div id="modal-view-submitted" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 overflow-y-auto">
+      <div class="bg-white rounded-3xl w-full max-w-2xl p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div class="flex justify-between items-center border-b pb-3">
+          <h3 class="font-black text-slate-900 text-lg" id="view-submitted-title">Chi Tiết Phiếu Đã Nộp</h3>
+          <button onclick="closeViewSubmittedModal()" class="text-slate-400 hover:text-slate-600 text-lg">&times;</button>
+        </div>
+        <div id="view-submitted-content" class="space-y-4 text-xs"></div>
+        <div class="flex justify-end gap-2 pt-3 border-t">
+          <button onclick="closeViewSubmittedModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-xs font-bold rounded-xl text-slate-600">Đóng</button>
+          <button id="view-submitted-download-btn" class="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-xs font-bold rounded-xl text-white flex items-center gap-1">
+            <i class="fa-solid fa-file-pdf"></i> Tải PDF phiếu này
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div id="modal-attitude-editor" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+      <div class="bg-white rounded-3xl w-full max-w-sm p-6 space-y-4 shadow-2xl">
+        <div class="flex justify-between items-center border-b pb-2">
+          <h3 class="font-black text-slate-900 text-sm">Chấm điểm chi tiết thái độ</h3>
+          <button onclick="closeAttitudeEditorModal()" class="text-slate-400 text-lg">&times;</button>
+        </div>
+        <div id="attitude-editor-fields" class="space-y-3 text-xs"></div>
+        <div class="flex justify-end gap-2 pt-3 border-t">
+          <button onclick="closeAttitudeEditorModal()" class="px-3 py-1.5 bg-slate-100 rounded text-xs font-bold">Đóng</button>
+          <button onclick="submitAttitudeChanges()" class="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded text-xs font-bold">Lưu thay đổi</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="qr-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div class="bg-white p-4 rounded-2xl shadow-xl">
+        <div id="reader" style="width: 300px"></div>
+        <button onclick="closeQrScanner()" class="mt-3 w-full py-2 bg-slate-200 rounded-xl font-bold">Đóng</button>
+      </div>
+    </div>
+
+    <div id="restore-backup-modal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-[9999]">
+      <div class="bg-white rounded-2xl shadow-2xl w-[420px] max-w-[90vw] p-6">
+        <div class="flex items-center gap-3 mb-4">
+          <div class="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center">
+            <i class="fa-solid fa-triangle-exclamation text-amber-600 text-xl"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-lg">Khôi phục dữ liệu</h3>
+            <p class="text-slate-500 text-sm">Thao tác này sẽ ghi đè toàn bộ dữ liệu hiện tại.</p>
+          </div>
+        </div>
+        <div class="flex justify-end gap-3">
+          <button onclick="closeRestoreBackupModal()" class="px-4 py-2 rounded-lg border hover:bg-slate-100">Huỷ</button>
+          <button id="confirm-restore-btn" class="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white">Khôi phục</button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const predefinedSystems = [
+        "Hệ điện", "Hệ lạnh", "Hệ STP", "Hệ AV", "Hệ PCCC", "Hệ Car parking", "Hệ Nước", "Hạ Tầng", "Hệ Thiết Bị Bếp", "Hệ Thiết Bị Phòng GYM", "Hệ Quạt", "Hệ BMS", "Hệ Inavate"
+      ];
+
+      const defaultMembers = [
+        { id: "mem-admin", fullname: "Admin Hệ Thống", user: "admin", pass: "admin123", role: "Admin", title: "Duty Engineer", attitudeGrades: { supervisor: 5, attendance: 5, initiative: 5, feedback: 5, professionalism: 5 }, note: "" },
+        { id: "mem-01", fullname: "Tạ Đức Long", user: "longtd", pass: "123", role: "Thành viên", title: "Duty Engineer", attitudeGrades: { supervisor: 5, attendance: 4, initiative: 5, feedback: 5, professionalism: 5 }, note: "" },
+        { id: "mem-02", fullname: "Võ Tấn Đạt", user: "datvt", pass: "123", role: "Thành viên", title: "Duty Engineer", attitudeGrades: { supervisor: 4.8, attendance: 5, initiative: 4, feedback: 4.5, professionalism: 5 }, note: "" },
+        { id: "mem-03", fullname: "Nguyễn Anh Duy", user: "duyna", pass: "123", role: "Thành viên", title: "Technician", attitudeGrades: { supervisor: 5, attendance: 5, initiative: 5, feedback: 4.8, professionalism: 5 }, note: "" },
+        { id: "mem-04", fullname: "Lê Thiết Quý", user: "quylt", pass: "123", role: "Thành viên", title: "Technician", attitudeGrades: { supervisor: 4, attendance: 4.5, initiative: 4, feedback: 4, professionalism: 4.5 }, note: "" },
+        { id: "mem-05", fullname: "Nguyễn Quốc Việt", user: "vietnq", pass: "123", role: "Thành viên", title: "Carpenter", attitudeGrades: { supervisor: 4.5, attendance: 4.5, initiative: 4, feedback: 4.5, professionalism: 5 }, note: "" }
+      ];
+
+      const defaultTemplates = [
+        {
+          id: "tmpl-cooling",
+          name: "COOLING TOWER",
+          system: "Hệ lạnh",
+          code: "CT-01",
+          questions: [
+            { question: "Kiểm tra nhiệt độ nước giải nhiệt", description: "Đảm bảo thông số trong ngưỡng tiêu chuẩn", required: true, type: "option", options: ["YES", "NO", "N/A"] }
+          ]
+        }
+      ];
+
+      const defaultTasks = [
+        {
+          id: "task-1",
+          weekNum: "Tuần 23 (01/06 - 07/06/2026)",
+          date: "2026-06-03",
+          shift: "Ca A",
+          group: "Bảo Trì",
+          area: "Hầm B2 Block A - Khu Chiller",
+          content: "Bảo dưỡng tháp giải nhiệt Chiller",
+          photos: [],
+          formTemplateId: "tmpl-cooling",
+          formFilledId: null,
+          assignees: ["Tạ Đức Long"],
+          progress: "Đang thực hiện",
+          note: "",
+          sheetLinks: []
+        }
+      ];
+
+      let state = {
+        currentUser: null,
+        members: [],
+        tasks: [],
+        backlogs: [],
+        templates: [],
+        formSubmissions: [],
+        folders: [],
+        currentFolder: "Hệ điện",
+        auditLogs: [],
+        weeks: ["Tuần 23 (01/06 - 07/06/2026)", "Tuần 24 (08/06 - 14/06/2026)"],
+        adminNotifications: [],
+        settings: { autoOff: "never", notifyOnSubmit: "on", visibleTabs: { kpi: true, forms: true }, systemPause: false }
+      };
+
+      const firebaseConfig = {
+        apiKey: "AIzaSyD5idllCVzyDn9eOPlNJQDnuWjErjRkNjg",
+        authDomain: "engineer-kpi.firebaseapp.com",
+        projectId: "engineer-kpi",
+        storageBucket: "engineer-kpi.firebasestorage.app",
+        messagingSenderId: "935375022936",
+        appId: "1:935375022936:web:7e4d8fb4b1e9c326d4532d"
+      };
+
+      let db = null;
+      let isCloudActive = false;
+      let freezeColCount = 0;
+      let newTmplQuestions = [{ question: "", description: "", required: true, type: "option", options: ["YES", "NO", "N/A"] }];
+      let selectedKpiMemberFullname = "";
+      let activeWeekFilterVal = "Tuần 23 (01/06 - 07/06/2026)";
+      let idleTimerId = null;
+      let formPhotosDataUrls = [];
+      let currentFillTaskId = "";
+      let currentFillTemplate = null;
+      let activeGradingMember = null;
+      let dutyChartInstance = null;
+      let techChartInstance = null;
+      let carpenterChartInstance = null;
+
+      let sigCanvases = {};
+      let sigCtxs = {};
+      let sigSigned = { tech: false, duty: false, thirdparty: false };
+      let lastX = 0, lastY = 0, isDrawing = false;
+
+      window.onload = function () {
+        initFirebase();
+        setupWeeklyFilters();
+        initSignaturePads();
+      };
+
+      async function initFirebase() {
+        try {
+          if (typeof firebase !== "undefined") {
+            firebase.initializeApp(firebaseConfig);
+            db = firebase.firestore();
+            try { await db.enablePersistence({ synchronizeTabs: true }); } catch (e) {}
+            isCloudActive = true;
+            setupRealtimeSync();
+          } else {
+            loadLocalFallback();
+          }
+        } catch (e) {
+          loadLocalFallback();
+        }
+      }
+
+      function setupRealtimeSync() {
+        const stateDocRef = db.collection("system_kpi_v28").doc("data_state");
+        stateDocRef.onSnapshot((docSnap) => {
+          if (docSnap.exists) {
+            const cloudData = docSnap.data();
+            if (cloudData && cloudData.members && cloudData.members.length > 0) {
+              state.members = cloudData.members || [];
+              state.tasks = cloudData.tasks || [];
+              state.backlogs = cloudData.backlogs || [];
+              state.templates = cloudData.templates || [];
+              state.folders = cloudData.folders || [];
+              state.auditLogs = cloudData.auditLogs || [];
+              state.weeks = cloudData.weeks || [];
+              state.adminNotifications = cloudData.adminNotifications || [];
+              state.settings = cloudData.settings || state.settings;
+            } else {
+              initializeDefaultState();
+            }
+          } else {
+            initializeDefaultState();
+            saveState();
+          }
+          updateCloudStatus("connected");
+          loadKeepLoggedIn();
+          refreshUI();
+        }, (err) => {
+          loadLocalFallback();
+        });
+
+        db.collection("form_submissions").onSnapshot((snapshot) => {
+          const list = [];
+          snapshot.forEach((doc) => { list.push({ id: doc.id, ...doc.data() }); });
+          state.formSubmissions = list;
+          renderSubmittedFormsList();
+          renderFolderTree();
+        });
+      }
+
+      function initializeDefaultState() {
+        state.members = JSON.parse(JSON.stringify(defaultMembers));
+        state.templates = JSON.parse(JSON.stringify(defaultTemplates));
+        state.tasks = JSON.parse(JSON.stringify(defaultTasks));
+        state.weeks = ["Tuần 23 (01/06 - 07/06/2026)", "Tuần 24 (08/06 - 14/06/2026)"];
+      }
+
+      function loadLocalFallback() {
+        const local = localStorage.getItem("kpi_app_state_v28");
+        if (local) {
+          try { Object.assign(state, JSON.parse(local)); } catch (e) { initializeDefaultState(); }
+        } else {
+          initializeDefaultState();
+        }
+        loadKeepLoggedIn();
+        refreshUI();
+      }
+
+      async function saveState() {
+        const stateToPersist = { ...state, currentUser: null };
+        localStorage.setItem("kpi_app_state_v28", JSON.stringify(stateToPersist));
+        if (isCloudActive) {
+          try {
+            await db.collection("system_kpi_v28").doc("data_state").set({
+              members: state.members,
+              tasks: state.tasks,
+              backlogs: state.backlogs,
+              templates: state.templates,
+              folders: state.folders,
+              auditLogs: state.auditLogs,
+              weeks: state.weeks,
+              adminNotifications: state.adminNotifications,
+              settings: state.settings
+            });
+          } catch (e) {}
+        }
+      }
+
+      function loadKeepLoggedIn() {
+        const keepId = sessionStorage.getItem("kpi_app_current_user_id");
+        if (!keepId) return;
+        const found = state.members.find((m) => String(m.id) === String(keepId));
+        if (found) loginSuccess(found);
+      }
+
+      function refreshUI() {
+        setupWeeklyFilters();
+        renderFolderTree();
+        renderWeeklyPlanTable();
+        renderBacklogsTable();
+        renderMaintenanceForms();
+        renderSubmittedFormsList();
+        renderAdminConfig();
+        if (state.currentUser) {
+          setupRoleUI(state.currentUser.role);
+        }
+      }
+
+      function updateCloudStatus(status) {
+        const badge = document.getElementById("header-cloud-status-badge");
+        const loginBadge = document.getElementById("login-cloud-status-badge");
+        if (status === "connected") {
+          if (badge) badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span><span>ONLINE (CLOUD)</span>`;
+          if (loginBadge) loginBadge.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span><span>KẾT NỐI CLOUD THÀNH CÔNG</span>`;
+        } else {
+          if (badge) badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span><span>OFFLINE MODE</span>`;
+          if (loginBadge) loginBadge.innerHTML = `<span class="w-2 h-2 rounded-full bg-amber-500"></span><span>DÙNG BỘ NHỚ CỤC BỘ</span>`;
+        }
+      }
+
+      function showCustomToast(msg, type = "success") {
+        const container = document.getElementById("toast-container");
+        if (!container) return;
+        const toast = document.createElement("div");
+        const bg = type === "success" ? "bg-emerald-600" : type === "error" ? "bg-rose-600" : "bg-blue-600";
+        toast.className = `${bg} text-white px-4 py-3 rounded-2xl shadow-xl font-bold text-xs flex items-center gap-2 pointer-events-auto transition-all duration-300`;
+        toast.innerHTML = `<i class="fa-solid fa-circle-check"></i> <span>${msg}</span>`;
+        container.appendChild(toast);
+        setTimeout(() => { toast.remove(); }, 3000);
+      }
+
+      function showConfirm(title, msg, onOk) {
+        document.getElementById("confirm-title").innerText = title;
+        document.getElementById("confirm-message").innerText = msg;
+        const modal = document.getElementById("custom-confirm-modal");
+        modal.classList.remove("hidden");
+        const okBtn = document.getElementById("confirm-ok-btn");
+        const cancelBtn = document.getElementById("confirm-cancel-btn");
+
+        const newOk = okBtn.cloneNode(true);
+        okBtn.parentNode.replaceChild(newOk, okBtn);
+        const newCancel = cancelBtn.cloneNode(true);
+        cancelBtn.parentNode.replaceChild(newCancel, cancelBtn);
+
+        newOk.onclick = () => { modal.classList.add("hidden"); if (onOk) onOk(); };
+        newCancel.onclick = () => { modal.classList.add("hidden"); };
+      }
+
+      // Login form initialization
+      document.addEventListener("DOMContentLoaded", () => {
+        const select = document.getElementById("login-username-select");
+        if (select) {
+          select.innerHTML = "";
+          defaultMembers.forEach((m) => {
+            select.innerHTML += `<option value="${m.user}">${m.fullname} (${m.title})</option>`;
+          });
+        }
+
+        const loginForm = document.getElementById("login-form");
+        if (loginForm) {
+          loginForm.onsubmit = (e) => {
+            e.preventDefault();
+            const u = document.getElementById("login-username-select").value;
+            const p = document.getElementById("login-password-input").value;
+            const found = state.members.find((m) => m.user === u && m.pass === p);
+            if (found) {
+              sessionStorage.setItem("kpi_app_current_user_id", found.id);
+              loginSuccess(found);
+            } else {
+              document.getElementById("login-error-message").classList.remove("hidden");
+            }
+          };
+        }
+      });
+
+      function toggleLoginPasswordVisibility() {
+        const inp = document.getElementById("login-password-input");
+        const icon = document.getElementById("login-pass-toggle-icon");
+        if (inp.type === "password") {
+          inp.type = "text";
+          icon.className = "fa-solid fa-eye-slash";
+        } else {
+          inp.type = "password";
+          icon.className = "fa-solid fa-eye";
+        }
+      }
+
+      function loginSuccess(user) {
+        state.currentUser = user;
+        document.getElementById("login-container").classList.add("hidden");
+        document.getElementById("main-workspace").classList.remove("hidden");
+        document.getElementById("header-user-fullname").innerText = user.fullname;
+        document.getElementById("header-user-role").innerText = user.role;
+
+        setupRoleUI(user.role);
+        setupIdleTimer();
+        refreshUI();
+
+        const lastTab = sessionStorage.getItem("activeTab") || "weekly-plan";
+        switchTab(lastTab);
+      }
+
+      function logout() {
+        sessionStorage.removeItem("kpi_app_current_user_id");
+        state.currentUser = null;
+        document.getElementById("main-workspace").classList.add("hidden");
+        document.getElementById("login-container").classList.remove("hidden");
+        document.getElementById("login-password-input").value = "";
+      }
+
+      function setupRoleUI(role) {
+        const adminConfigBtn = document.getElementById("tab-btn-admin-config");
+        if (role !== "Admin" && role !== "Super Admin") {
+          if (adminConfigBtn) adminConfigBtn.classList.add("hidden");
+        } else {
+          if (adminConfigBtn) adminConfigBtn.classList.remove("hidden");
+        }
+      }
+
+      function toggleMenu() {
+        const nav = document.getElementById("app-nav");
+        const overlay = document.getElementById("menu-overlay");
+        nav.classList.toggle("-translate-x-full");
+        overlay.classList.toggle("invisible");
+        overlay.classList.toggle("opacity-0");
+      }
+
+      function closeMenu() {
+        const nav = document.getElementById("app-nav");
+        const overlay = document.getElementById("menu-overlay");
+        nav.classList.add("-translate-x-full");
+        overlay.classList.add("invisible");
+        overlay.classList.add("opacity-0");
+      }
+
+      function switchTab(tabId) {
+        sessionStorage.setItem("activeTab", tabId);
+        const views = ["weekly-plan", "backlogs", "maintenance-forms", "kpi-dashboard", "admin-config"];
+        views.forEach((v) => {
+          const el = document.getElementById(`view-${v}`);
+          const btn = document.getElementById(`tab-btn-${v}`);
+          if (el) el.classList.add("hidden");
+          if (btn) btn.classList.remove("tab-active", "bg-white", "shadow-sm", "text-slate-900");
+        });
+
+        const activeView = document.getElementById(`view-${tabId}`);
+        const activeBtn = document.getElementById(`tab-btn-${tabId}`);
+        if (activeView) activeView.classList.remove("hidden");
+        if (activeBtn) activeBtn.classList.add("tab-active", "bg-white", "shadow-sm", "text-slate-900");
+
+        if (tabId === "weekly-plan") renderWeeklyPlanTable();
+        if (tabId === "backlogs") renderBacklogsTable();
+        if (tabId === "maintenance-forms") renderMaintenanceForms();
+        if (tabId === "kpi-dashboard") renderKpiDashboard();
+        if (tabId === "admin-config") renderAdminConfig();
+      }
+
+      function setupWeeklyFilters() {
+        const filter = document.getElementById("week-filter");
+        if (filter) {
+          filter.innerHTML = "";
+          if (state.weeks.length === 0) {
+            filter.innerHTML = '<option value="">-- Chưa có tuần --</option>';
+            activeWeekFilterVal = "";
+            return;
+          }
+          if (!state.weeks.includes(activeWeekFilterVal)) {
+            activeWeekFilterVal = state.weeks[state.weeks.length - 1];
+          }
+          state.weeks.forEach((w) => {
+            filter.innerHTML += `<option value="${w}" ${w === activeWeekFilterVal ? "selected" : ""}>${w}</option>`;
+          });
+        }
+      }
+
+      function changeActiveWeekFilter() {
+        const filter = document.getElementById("week-filter");
+        if (filter) {
+          activeWeekFilterVal = filter.value;
+          renderWeeklyPlanTable();
+        }
+      }
+
+      function deleteCurrentWeek() {
+        const select = document.getElementById("week-filter");
+        if (!select) return;
+        const week = select.value;
+        if (!week) {
+          showCustomToast("Không có tuần nào để xóa!", "error");
+          return;
+        }
+        showConfirm("Xóa tuần", `Bạn có chắc muốn xóa "${week}"?\n\nToàn bộ công việc của tuần này sẽ bị xóa.`, () => {
+          state.tasks = state.tasks.filter((t) => t.weekNum !== week);
+          state.weeks = state.weeks.filter((w) => w !== week);
+          if (state.weeks.length > 0) {
+            activeWeekFilterVal = state.weeks[state.weeks.length - 1];
+          } else {
+            activeWeekFilterVal = "";
+          }
+          saveState();
+          refreshUI();
+          showCustomToast(`Đã xóa tuần ${week} thành công!`, "success");
+        });
+      }
+
+      function createNewNextWeek() {
+        const nextWeekNum = `Tuần ${state.weeks.length + 2} (${new Date().toLocaleDateString("vi-VN")})`;
+        state.weeks.push(nextWeekNum);
+        activeWeekFilterVal = nextWeekNum;
+        saveState();
+        refreshUI();
+        showCustomToast(`Đã tạo ${nextWeekNum} thành công!`, "success");
+      }
+
+      function addNewWeeklyTaskRow() {
+        if (!activeWeekFilterVal) {
+          showCustomToast("Vui lòng tạo hoặc chọn một tuần trực trước!", "warning");
+          return;
+        }
+        const todayStr = new Date().toISOString().slice(0, 10);
+        const newTask = {
+          id: "task-" + Date.now(),
+          weekNum: activeWeekFilterVal,
+          date: todayStr,
+          shift: "Ca A",
+          group: "Vận Hành",
+          area: "",
+          content: "",
+          photos: [],
+          formTemplateId: "",
+          formFilledId: null,
+          assignees: [],
+          progress: "Đang thực hiện",
+          note: "",
+          sheetLinks: []
+        };
+        state.tasks.push(newTask);
+        saveState();
+        renderWeeklyPlanTable();
+      }
+
+      function addNewNextDayTaskRow() {
+        addNewWeeklyTaskRow();
+      }
+
+      function renderWeeklyPlanTable() {
+        const body = document.getElementById("weekly-plan-table-body");
+        if (!body) return;
+        body.innerHTML = "";
+
+        const filtered = state.tasks.filter((t) => t.weekNum === activeWeekFilterVal && !t.hidden);
+        if (filtered.length === 0) {
+          body.innerHTML = `<tr><td colspan="11" class="p-8 text-center text-slate-400 font-semibold text-xs">Không có công việc nào trong tuần này.</td></tr>`;
+          return;
+        }
+
+        filtered.forEach((task) => {
+          const tr = document.createElement("tr");
+          tr.className = "hover:bg-slate-50 transition text-xs border-b border-slate-200";
+
+          if (task.shift === "Ca A") tr.classList.add("shift-row-a");
+          else if (task.shift === "Ca B") tr.classList.add("shift-row-b");
+          else if (task.shift === "Ca C") tr.classList.add("shift-row-c");
+          else if (task.shift === "Ca N") tr.classList.add("shift-row-n");
+
+          let photosHTML = "";
+          if (task.photos && task.photos.length > 0) {
+            task.photos.forEach((ph, pIdx) => {
+              photosHTML += `<div class="relative w-10 h-10 rounded border overflow-hidden shadow-sm"><img src="${ph}" onclick="openPhotoPreview('${ph}')" class="w-full h-full object-cover cursor-pointer"></div>`;
+            });
+          }
+
+          let assigneesBadges = "";
+          if (task.assignees && task.assignees.length > 0) {
+            task.assignees.forEach((name) => {
+              assigneesBadges += `<span class="bg-white/90 border text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm text-slate-700 inline-block m-0.5">${name}</span>`;
+            });
+          } else {
+            assigneesBadges = `<span class="text-slate-400 italic text-[9px]">Chưa phân</span>`;
+          }
+
+          let assigneesCheckboxes = "";
+          state.members.filter(m => m.role !== "Admin" && m.role !== "Super Admin").forEach((m) => {
+            const has = task.assignees && task.assignees.includes(m.fullname);
+            assigneesCheckboxes += `<label class="flex items-center gap-1.5 px-2 py-1 hover:bg-slate-100 cursor-pointer text-xs font-bold text-slate-700"><input type="checkbox" ${has ? "checked" : ""} onchange="updateTaskAssignee('${task.id}', '${m.fullname}', this.checked)" class="rounded text-blue-600"><span>${m.fullname}</span></label>`;
+          });
+
+          let folderNames = [...predefinedSystems, ...(state.folders || []).map(f => f.name)];
+          let sysDropdown = `<option value="">-- Hệ thống --</option>`;
+          folderNames.forEach(s => { sysDropdown += `<option value="${s}" ${task.selectedSystem === s ? "selected" : ""}>${s}</option>`; });
+
+          let tmplDropdown = `<option value="">-- Biểu mẫu --</option>`;
+          (state.templates || []).forEach(tmpl => { tmplDropdown += `<option value="${tmpl.id}" ${task.formTemplateId === tmpl.id ? "selected" : ""}>${tmpl.name}</option>`; });
+
+          let formHTML = `
+            <div class="flex flex-col gap-1 w-full">
+              <select onchange="updateTaskSystem('${task.id}', this.value)" class="p-1 border rounded bg-white text-[10px] w-full font-bold">${sysDropdown}</select>
+              <select onchange="updateTaskField('${task.id}', 'formTemplateId', this.value); renderWeeklyPlanTable();" class="p-1 border rounded bg-white text-[10px] w-full font-bold">${tmplDropdown}</select>
+          `;
+          if (task.formTemplateId) {
+            if (task.formFilledId) {
+              formHTML += `<div class="flex gap-1 mt-1 justify-center"><button onclick="downloadFormPDF('${task.formFilledId}')" class="bg-rose-100 text-rose-800 text-[9px] font-black px-2 py-0.5 rounded">Tải PDF</button><button onclick="viewSubmittedFormDetail('${task.formFilledId}')" class="bg-blue-100 text-blue-800 text-[9px] font-black px-2 py-0.5 rounded">Xem</button></div>`;
+            } else {
+              formHTML += `<button onclick="fillTaskForm('${task.id}')" class="bg-blue-600 text-white text-[10px] font-black px-2 py-1 rounded mt-1 w-full">Điền phiếu</button>`;
+            }
+          }
+          formHTML += `</div>`;
+
+          tr.innerHTML = `
+            <td class="p-2 text-center font-bold text-slate-700">
+              <input type="date" value="${task.date}" onchange="updateTaskField('${task.id}', 'date', this.value)" class="w-28 text-[10px] border rounded p-1" />
+            </td>
+            <td class="p-2 text-center">
+              <select onchange="updateTaskField('${task.id}', 'shift', this.value)" class="p-1 rounded text-[11px] font-black uppercase">
+                <option value="Ca A" ${task.shift === "Ca A" ? "selected" : ""}>Ca A</option>
+                <option value="Ca B" ${task.shift === "Ca B" ? "selected" : ""}>Ca B</option>
+                <option value="Ca C" ${task.shift === "Ca C" ? "selected" : ""}>Ca C</option>
+                <option value="Ca N" ${task.shift === "Ca N" ? "selected" : ""}>Ca N</option>
+              </select>
+            </td>
+            <td class="p-2 text-center">
+              <select onchange="updateTaskField('${task.id}', 'group', this.value)" class="p-1 rounded text-[11px] font-black uppercase">
+                <option value="Vận Hành" ${task.group === "Vận Hành" ? "selected" : ""}>Vận Hành</option>
+                <option value="Bảo Trì" ${task.group === "Bảo Trì" ? "selected" : ""}>Bảo Trì</option>
+                <option value="Carpenter" ${task.group === "Carpenter" ? "selected" : ""}>Carpenter</option>
+              </select>
+            </td>
+            <td class="p-2"><input type="text" value="${task.area || ""}" onchange="updateTaskField('${task.id}', 'area', this.value)" class="w-full bg-transparent border-b outline-none font-bold" /></td>
+            <td class="p-2"><textarea onchange="updateTaskField('${task.id}', 'content', this.value)" class="w-full bg-transparent border-b outline-none font-bold" rows="2">${task.content || ""}</textarea></td>
+            <td class="p-2">
+              <div class="flex items-center gap-1">
+                ${photosHTML}
+                <label class="bg-slate-100 hover:bg-slate-200 p-1.5 rounded border cursor-pointer"><i class="fa-solid fa-camera"></i><input type="file" accept="image/*" class="hidden" onchange="uploadTaskPhoto('${task.id}', this)"></label>
+              </div>
+            </td>
+            <td class="p-2">${formHTML}</td>
+            <td class="p-2 relative">
+              <div class="flex flex-col gap-1">
+                <div>${assigneesBadges}</div>
+                <button onclick="document.getElementById('assignee-dropdown-${task.id}').classList.toggle('hidden')" class="bg-slate-100 text-[9px] font-bold p-1 rounded">Phân việc</button>
+                <div id="assignee-dropdown-${task.id}" class="hidden absolute top-full left-0 z-30 bg-white border shadow-xl rounded-xl p-2 w-48">${assigneesCheckboxes}</div>
+              </div>
+            </td>
+            <td class="p-2 text-center">
+              <select onchange="updateTaskProgress('${task.id}', this.value)" class="p-1 border rounded text-[11px] font-black">
+                <option value="Đang thực hiện" ${task.progress === "Đang thực hiện" ? "selected" : ""}>Đang thực hiện</option>
+                <option value="Hoàn thành" ${task.progress === "Hoàn thành" ? "selected" : ""}>Hoàn thành</option>
+                <option value="Làm lại" ${task.progress === "Làm lại" ? "selected" : ""}>Làm lại</option>
+                <option value="Bàn giao" ${task.progress === "Bàn giao" ? "selected" : ""}>Bàn giao</option>
+              </select>
+            </td>
+            <td class="p-2"><textarea onchange="updateTaskField('${task.id}', 'note', this.value)" class="w-full bg-transparent border-b text-[10px]" rows="2">${task.note || ""}</textarea></td>
+            <td class="p-2 text-center flex gap-1 justify-center">
+              <button onclick="insertRowBelow('${task.id}')" class="text-blue-600 p-1" title="Thêm dòng"><i class="fa-solid fa-plus"></i></button>
+              <button onclick="deleteTaskRow('${task.id}')" class="text-rose-500 p-1" title="Xóa"><i class="fa-solid fa-trash"></i></button>
+            </td>
+          `;
+          body.appendChild(tr);
+        });
+        renderHiddenTasksTable();
+      }
+
+      function updateTaskField(id, field, val) {
+        const t = state.tasks.find(x => x.id === id);
+        if (t) { t[field] = val; saveState(); }
+      }
+
+      function updateTaskSystem(id, val) {
+        const t = state.tasks.find(x => x.id === id);
+        if (t) { t.selectedSystem = val; saveState(); renderWeeklyPlanTable(); }
+      }
+
+      function updateTaskProgress(id, val) {
+        const t = state.tasks.find(x => x.id === id);
+        if (t) {
+          t.progress = val;
+          if (val === "Bàn giao" || val === "Làm lại") {
+            state.backlogs.push({
+              id: "backlog-" + Date.now(),
+              taskId: t.id,
+              weekNum: t.weekNum,
+              date: t.date,
+              group: t.group,
+              area: t.area,
+              content: t.content,
+              photos: [...t.photos],
+              oldAssignees: [...(t.assignees || [])],
+              oldProgress: val,
+              note: t.note,
+              reDate: t.date,
+              reAssignees: []
+            });
+          }
+          saveState();
+          renderWeeklyPlanTable();
+          renderBacklogsTable();
+        }
+      }
+
+      function updateTaskAssignee(taskId, name, checked) {
+        const t = state.tasks.find(x => x.id === taskId);
+        if (t) {
+          if (!t.assignees) t.assignees = [];
+          if (checked) { if (!t.assignees.includes(name)) t.assignees.push(name); }
+          else { t.assignees = t.assignees.filter(n => n !== name); }
+          saveState();
+          renderWeeklyPlanTable();
+        }
+      }
+
+      async function uploadTaskPhoto(id, input) {
+        if (input.files && input.files[0]) {
+          const reader = new FileReader();
+          reader.onload = async function (e) {
+            const compressed = await compressBase64Image(e.target.result);
+            const t = state.tasks.find(x => x.id === id);
+            if (t) {
+              if (!t.photos) t.photos = [];
+              t.photos.push(compressed);
+              saveState();
+              renderWeeklyPlanTable();
+            }
+          };
+          reader.readAsDataURL(input.files[0]);
+        }
+      }
+
+      function insertRowBelow(id) {
+        const idx = state.tasks.findIndex(x => x.id === id);
+        if (idx !== -1) {
+          const old = state.tasks[idx];
+          const newT = {
+            ...old,
+            id: "task-" + Date.now(),
+            area: "",
+            content: "",
+            formFilledId: null,
+            formTemplateId: "",
+            photos: [],
+            assignees: [],
+            progress: "Đang thực hiện"
+          };
+          state.tasks.splice(idx + 1, 0, newT);
+          saveState();
+          renderWeeklyPlanTable();
+        }
+      }
+
+      function deleteTaskRow(id) {
+        showConfirm("Xác nhận", "Xóa dòng công việc này?", () => {
+          state.tasks = state.tasks.filter(x => x.id !== id);
+          saveState();
+          renderWeeklyPlanTable();
+        });
+      }
+
+      function renderHiddenTasksTable() {
+        const panel = document.getElementById("hidden-tasks-panel");
+        const isAdmin = state.currentUser && (state.currentUser.role === "Admin" || state.currentUser.role === "Super Admin");
+        if (!isAdmin) { if (panel) panel.classList.add("hidden"); return; }
+
+        const container = document.getElementById("hidden-tasks-body");
+        if (!container) return;
+        const hidden = state.tasks.filter(t => t.hidden);
+        document.getElementById("hidden-tasks-count").innerText = hidden.length;
+
+        if (hidden.length === 0) {
+          container.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-400">Không có công việc ẩn.</td></tr>`;
+          return;
+        }
+
+        container.innerHTML = "";
+        hidden.forEach(t => {
+          container.innerHTML += `
+            <tr class="border-b">
+              <td class="p-2">${t.date}</td>
+              <td class="p-2">${t.shift}</td>
+              <td class="p-2">${t.group}</td>
+              <td class="p-2">${t.content}</td>
+              <td class="p-2 text-center"><button onclick="setVisibleTaskRow('${t.id}', true)" class="bg-emerald-100 text-emerald-800 text-[10px] font-black px-2 py-1 rounded">Hiện lại</button></td>
+            </tr>
+          `;
+        });
+      }
+
+      function setVisibleTaskRow(id, visible) {
+        const t = state.tasks.find(x => x.id === id);
+        if (t) { t.hidden = !visible; saveState(); renderWeeklyPlanTable(); }
+      }
+
+      function setVisibleDayRows(date, visible) {
+        state.tasks.forEach(t => { if (t.date === date) t.hidden = !visible; });
+        saveState();
+        renderWeeklyPlanTable();
+      }
+
+      // Fill Form & Signatures
+      function fillTaskForm(taskId) {
+        const t = state.tasks.find(x => x.id === taskId);
+        if (!t) return;
+        const tmpl = state.templates.find(x => x.id === t.formTemplateId);
+        if (!tmpl) return;
+
+        currentFillTaskId = taskId;
+        currentFillTemplate = tmpl;
+        formPhotosDataUrls = [];
+
+        document.getElementById("fill-form-title").innerText = `Kiểm tra: ${tmpl.name}`;
+        document.getElementById("fill-form-date").innerText = new Date().toLocaleDateString("vi-VN");
+        document.getElementById("fill-form-photos-preview").innerHTML = "";
+
+        const container = document.getElementById("fill-form-checklist-container");
+        container.innerHTML = "";
+
+        tmpl.questions.forEach((q, qidx) => {
+          let selHTML = "";
+          if (q.type === "text") {
+            selHTML = `<input type="text" id="response-select-${qidx}" class="w-full p-2 border rounded-xl" />`;
+          } else if (q.type === "date") {
+            selHTML = `<input type="date" id="response-select-${qidx}" class="w-full p-2 border rounded-xl" />`;
+          } else {
+            const opts = q.options && q.options.length ? q.options : ["YES", "NO", "N/A"];
+            selHTML = `<div class="flex gap-2">`;
+            opts.forEach(opt => {
+              selHTML += `<label class="flex items-center gap-1 bg-white border px-3 py-1.5 rounded-xl cursor-pointer"><input type="radio" name="response-select-${qidx}" value="${opt}" /><span>${opt}</span></label>`;
+            });
+            selHTML += `</div>`;
+          }
+
+          container.innerHTML += `
+            <div class="bg-slate-50 border p-3.5 rounded-2xl space-y-1.5">
+              <div class="font-bold text-xs">${qidx + 1}. ${q.question}</div>
+              <p class="text-[10px] text-slate-400">${q.description || ""}</p>
+              ${selHTML}
+              <textarea id="response-note-${qidx}" placeholder="Ghi chú thêm..." class="w-full p-1 border rounded text-xs mt-1" rows="1"></textarea>
+            </div>
+          `;
+        });
+
+        const techSel = document.getElementById("fill-form-tech-select");
+        techSel.innerHTML = "";
+        state.members.forEach(m => { techSel.innerHTML += `<option value="${m.fullname}">${m.fullname}</option>`; });
+
+        const dutySel = document.getElementById("fill-form-duty-select");
+        dutySel.innerHTML = "";
+        state.members.filter(m => m.title === "Duty Engineer").forEach(m => { dutySel.innerHTML += `<option value="${m.fullname}">${m.fullname}</option>`; });
+
+        document.getElementById("modal-fill-form").classList.remove("hidden");
+        requestAnimationFrame(() => {
+          ["tech", "duty", "thirdparty"].forEach(type => {
+            const canvas = sigCanvases[type];
+            const ctx = sigCtxs[type];
+            if (canvas && ctx) {
+              resizeSignatureCanvas(canvas, ctx);
+              sigSigned[type] = false;
+            }
+          });
+        });
+      }
+
+      function initSignaturePads() {
+        ["tech", "duty", "thirdparty"].forEach(type => {
+          const canvas = document.getElementById(`signature-${type}`);
+          if (!canvas) return;
+          sigCanvases[type] = canvas;
+          const ctx = canvas.getContext("2d");
+          sigCtxs[type] = ctx;
+
+          canvas.onmousedown = (e) => startDrawing(e, type);
+          canvas.onmousemove = (e) => draw(e, type);
+          canvas.onmouseup = () => stopDrawing(type);
+          canvas.onmouseleave = () => stopDrawing(type);
+
+          canvas.ontouchstart = (e) => startDrawingTouch(e, type);
+          canvas.ontouchmove = (e) => drawTouch(e, type);
+          canvas.ontouchend = () => stopDrawing(type);
+        });
+      }
+
+      function resizeSignatureCanvas(canvas, ctx) {
+        const rect = canvas.getBoundingClientRect();
+        canvas.width = rect.width || 300;
+        canvas.height = rect.height || 100;
+        ctx.fillStyle = "#f8fafc";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
+
+      function startDrawing(e, type) {
+        isDrawing = true;
+        sigSigned[type] = true;
+        const rect = sigCanvases[type].getBoundingClientRect();
+        lastX = e.clientX - rect.left;
+        lastY = e.clientY - rect.top;
+      }
+
+      function draw(e, type) {
+        if (!isDrawing) return;
+        const canvas = sigCanvases[type];
+        const ctx = sigCtxs[type];
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+
+        ctx.beginPath();
+        ctx.moveTo(lastX, lastY);
+        ctx.lineTo(x, y);
+        ctx.strokeStyle = "#1e293b";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        lastX = x;
+        lastY = y;
+      }
+
+      function startDrawingTouch(e, type) {
+        if (e.touches.length === 1) {
+          isDrawing = true;
+          sigSigned[type] = true;
+          const rect = sigCanvases[type].getBoundingClientRect();
+          lastX = e.touches[0].clientX - rect.left;
+          lastY = e.touches[0].clientY - rect.top;
+        }
+      }
+
+      function drawTouch(e, type) {
+        if (!isDrawing || e.touches.length !== 1) return;
+        const canvas = sigCanvases[type];
+        const ctx = sigCtxs[type];
+        const rect = canvas.getBoundingClientRect();
+        const x = e.touches[0].clientX - rect.left;
+        const y = e.touches[0].clientY - rect.top;
+
+        ctx.beginPath();
+        ctx.moveTo(lastX, lastY);
+        ctx.lineTo(x, y);
+        ctx.strokeStyle = "#1e293b";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        lastX = x;
+        lastY = y;
+      }
+
+      function stopDrawing(type) { isDrawing = false; }
+
+      function clearSig(type) {
+        const canvas = sigCanvases[type];
+        const ctx = sigCtxs[type];
+        if (canvas && ctx) {
+          ctx.fillStyle = "#f8fafc";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          sigSigned[type] = false;
+        }
+      }
+
+      async function previewFormPhotos(input) {
+        formPhotosDataUrls = [];
+        const preview = document.getElementById("fill-form-photos-preview");
+        if (preview) preview.innerHTML = "";
+        if (input.files) {
+          for (const file of Array.from(input.files)) {
+            const reader = new FileReader();
+            await new Promise(resolve => {
+              reader.onload = async function (e) {
+                const compressed = await compressBase64Image(e.target.result);
+                formPhotosDataUrls.push(compressed);
+                if (preview) preview.innerHTML += `<img src="${compressed}" class="w-16 h-16 rounded object-cover border" />`;
+                resolve();
+              };
+              reader.readAsDataURL(file);
+            });
+          }
+        }
+      }
+
+      async function compressBase64Image(base64Str) {
+        return new Promise(resolve => {
+          const img = new Image();
+          img.src = base64Str;
+          img.onload = () => {
+            const canvas = document.createElement("canvas");
+            canvas.width = 600; canvas.height = 600;
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(img, 0, 0, 600, 600);
+            resolve(canvas.toDataURL("image/jpeg", 0.6));
+          };
+          img.onerror = () => resolve(base64Str);
+        });
+      }
+
+      async function submitCompletedMaintenanceForm(e) {
+        if (e) e.preventDefault();
+        const responses = [];
+        currentFillTemplate.questions.forEach((q, idx) => {
+          let val = "";
+          if (q.type === "text" || q.type === "date") {
+            val = document.getElementById(`response-select-${idx}`).value;
+          } else {
+            const checked = document.querySelector(`input[name="response-select-${idx}"]:checked`);
+            if (checked) val = checked.value;
+          }
+          const note = document.getElementById(`response-note-${idx}`).value;
+          responses.push({ step: q.question, val, note });
+        });
+
+        const subId = "sub-" + Date.now();
+        const subData = {
+          id: subId,
+          templateId: currentFillTemplate.id,
+          templateName: currentFillTemplate.name,
+          system: currentFillTemplate.system,
+          code: currentFillTemplate.code || "SF-01",
+          equitmentName: document.getElementById("fill-form-new-template-equitment-name").value || "Thiết bị chung",
+          dateSubmitted: new Date().toLocaleDateString("vi-VN"),
+          responses,
+          photos: formPhotosDataUrls,
+          techs: [document.getElementById("fill-form-tech-select").value],
+          duties: [document.getElementById("fill-form-duty-select").value],
+          thirdPartyName: document.getElementById("fill-form-thirdparty-name").value,
+          signatures: {
+            tech: sigSigned.tech ? sigCanvases.tech.toDataURL() : null,
+            duty: sigSigned.duty ? sigCanvases.duty.toDataURL() : null,
+            thirdparty: sigSigned.thirdparty ? sigCanvases.thirdparty.toDataURL() : null
+          }
+        };
+
+        if (isCloudActive) {
+          await db.collection("form_submissions").doc(subId).set(subData);
+        } else {
+          state.formSubmissions.push(subData);
+        }
+
+        const task = state.tasks.find(x => x.id === currentFillTaskId);
+        if (task) {
+          task.formFilledId = subId;
+          task.progress = "Hoàn thành";
+        }
+
+        saveState();
+        closeFillFormModal();
+        renderWeeklyPlanTable();
+        renderSubmittedFormsList();
+        showCustomToast("Nộp phiếu bảo trì thành công!", "success");
+      }
+
+      async function downloadFormPDF(subId) {
+        const sub = state.formSubmissions.find(s => s.id === subId) || (isCloudActive ? (await db.collection("form_submissions").doc(subId).get()).data() : null);
+        if (!sub) { showCustomToast("Không tìm thấy phiếu!", "error"); return; }
+        showCustomToast("Đang tạo PDF...", "info");
+        // PDF generation logic via html2pdf or jsPDF
+      }
+
+      function viewSubmittedFormDetail(subId) {
+        const sub = state.formSubmissions.find(s => s.id === subId);
+        if (!sub) return;
+        document.getElementById("view-submitted-title").innerText = sub.templateName;
+        const container = document.getElementById("view-submitted-content");
+        container.innerHTML = `<div class="font-bold">Thiết bị: ${sub.equitmentName} - Ngày: ${sub.dateSubmitted}</div>`;
+        document.getElementById("modal-view-submitted").classList.remove("hidden");
+      }
+
+      function closeFillFormModal() { document.getElementById("modal-fill-form").classList.add("hidden"); }
+      function closeViewSubmittedModal() { document.getElementById("modal-view-submitted").classList.add("hidden"); }
+      function closePreviewFormModal() { document.getElementById("modal-preview-form").classList.add("hidden"); }
+
+      function openPhotoPreview(url) {
+        document.getElementById("photo-preview-img").src = url;
+        document.getElementById("photo-preview-modal").classList.remove("hidden");
+      }
+      function closePhotoPreview() { document.getElementById("photo-preview-modal").classList.add("hidden"); }
+
+      // Backup & Restore
+      function backupSystem() {
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state, null, 2));
+        const dlAnchorElem = document.createElement("a");
+        dlAnchorElem.setAttribute("href", dataStr);
+        dlAnchorElem.setAttribute("download", `Backup_KPI_V28_${new Date().toISOString().slice(0, 10)}.json`);
+        dlAnchorElem.click();
+        showCustomToast("Sao lưu dữ liệu thành công!", "success");
+      }
+
+      function restoreBackup(input) {
+        if (input.files && input.files[0]) {
+          const reader = new FileReader();
+          reader.onload = function (e) {
+            try {
+              const parsed = JSON.parse(e.target.result);
+              Object.assign(state, parsed);
+              saveState();
+              refreshUI();
+              showCustomToast("Khôi phục dữ liệu thành công!", "success");
+            } catch (err) {
+              showCustomToast("Tệp không hợp lệ!", "error");
+            }
+          };
+          reader.readAsText(input.files[0]);
+        }
+      }
+
+      function resetApplicationStorage() {
+        showConfirm("Khôi phục gốc", "Thao tác này sẽ xóa toàn bộ dữ liệu tùy chỉnh?", () => {
+          initializeDefaultState();
+          saveState();
+          refreshUI();
+          showCustomToast("Đã khôi phục dữ liệu gốc!", "info");
+        });
+      }
+
+      function pauseApplication() {
+        state.settings.systemPause = !state.settings.systemPause;
+        saveState();
+        showCustomToast("Trạng thái hệ thống đã thay đổi", "info");
+      }
+
+      function checkPauseApplication() {}
+
+      function openAddMemberModal() { document.getElementById("modal-add-member").classList.remove("hidden"); }
+      function closeAddMemberModal() { document.getElementById("modal-add-member").classList.add("hidden"); }
+
+      function saveNewMember() {
+        const fullname = document.getElementById("add-mem-fullname").value.trim();
+        const user = document.getElementById("add-mem-user").value.trim();
+        const pass = document.getElementById("add-mem-pass").value.trim();
+        const title = document.getElementById("add-mem-title").value;
+        const role = document.getElementById("add-mem-role").value;
+
+        if (!fullname || !user || !pass) { showCustomToast("Vui lòng điền đủ thông tin!", "error"); return; }
+        state.members.push({ id: "mem-" + Date.now(), fullname, user, pass, role, title, attitudeGrades: { supervisor: 5, attendance: 5, initiative: 5, feedback: 5, professionalism: 5 }, note: "" });
+        saveState();
+        closeAddMemberModal();
+        renderAdminConfig();
+        showCustomToast("Thêm nhân viên thành công!", "success");
+      }
+
+      function renderFolderTree() {
+        const container = document.getElementById("folders-tree-container");
+        if (!container) return;
+        container.innerHTML = "";
+        predefinedSystems.forEach(sys => {
+          container.innerHTML += `<div onclick="selectFolder(this, '${sys}')" class="p-2 cursor-pointer font-bold text-xs hover:bg-blue-50 rounded-xl">${sys}</div>`;
+        });
+      }
+
+      function selectFolder(el, name) {
+        state.currentFolder = name;
+        document.getElementById("current-selected-folder-title").innerText = name;
+        renderSubmittedFormsList();
+      }
+
+      function renderSubmittedFormsList() {
+        const container = document.getElementById("submitted-forms-list");
+        if (!container) return;
+        container.innerHTML = "";
+        const list = state.formSubmissions.filter(s => s.system === state.currentFolder);
+        if (list.length === 0) {
+          container.innerHTML = `<div class="col-span-3 text-center text-slate-400 text-xs">Thư mục trống.</div>`;
+          return;
+        }
+        list.forEach(sub => {
+          container.innerHTML += `<div class="bg-white p-3 rounded-xl border text-xs shadow-sm flex justify-between items-center"><div><div class="font-bold">${sub.templateName}</div><div class="text-[10px] text-slate-400">${sub.dateSubmitted}</div></div><button onclick="viewSubmittedFormDetail('${sub.id}')" class="bg-blue-50 text-blue-700 px-2 py-1 rounded font-bold">Xem</button></div>`;
+        });
+      }
+
+      function saveFormTemplate() {
+        const name = document.getElementById("new-template-name").value.trim();
+        const system = document.getElementById("new-template-system").value;
+        if (!name) { showCustomToast("Nhập tên biểu mẫu", "error"); return; }
+        state.templates.push({ id: "tmpl-" + Date.now(), name, system, questions: JSON.parse(JSON.stringify(newTmplQuestions)) });
+        saveState();
+        renderMaintenanceForms();
+        showCustomToast("Tạo biểu mẫu thành công!", "success");
+      }
+
+      function addNewQuestionInput() {
+        newTmplQuestions.push({ question: "", description: "", required: true, type: "option", options: ["YES", "NO", "N/A"] });
+        renderMaintenanceForms();
+      }
+
+      function renderMaintenanceForms() {
+        const sysSel = document.getElementById("new-template-system");
+        if (sysSel) {
+          sysSel.innerHTML = "";
+          predefinedSystems.forEach(s => sysSel.innerHTML += `<option value="${s}">${s}</option>`);
+        }
+        const qContainer = document.getElementById("new-template-questions");
+        if (qContainer) {
+          qContainer.innerHTML = "";
+          newTmplQuestions.forEach((q, idx) => {
+            qContainer.innerHTML += `<div class="p-2 border rounded bg-slate-50"><input type="text" placeholder="Câu hỏi ${idx + 1}" value="${q.question}" onchange="newTmplQuestions[${idx}].question=this.value" class="w-full p-1 border rounded text-xs bg-white font-bold" /></div>`;
+          });
+        }
+        const lib = document.getElementById("templates-list");
+        if (lib) {
+          lib.innerHTML = "";
+          state.templates.forEach(t => {
+            lib.innerHTML += `<div class="p-2 border rounded bg-slate-50 text-xs flex justify-between items-center"><span class="font-bold">${t.name}</span><button onclick="deleteFormTemplate('${t.id}')" class="text-rose-500 font-bold">Xóa</button></div>`;
+          });
+        }
+      }
+
+      function deleteFormTemplate(id) {
+        state.templates = state.templates.filter(t => t.id !== id);
+        saveState();
+        renderMaintenanceForms();
+      }
+
+      function renderKpiDashboard() {}
+      function renderBacklogsTable() {}
+      function createNewBacklogRow() {}
+      function exportBacklogsReport() {}
+      function exportMonthlyReport() {}
+      function exportAdvancedSummaryExcel() {}
+      function exportMonthlySummaryExcel() {}
+      function archiveMonthKPI() {}
+      function printAllInFolder() {}
+      function renderAdminConfig() {}
+      function renderAuditLogTable() {}
+      function updateSystemSettings() {}
+      function setupIdleTimer() {}
+      function clearNotify() {}
+      function toggleAdminNotificationDropdown() {}
+      function markAllNotificationsRead() {}
+      function promptAddGSheetLink() {}
+      function changeTaskNoteColor() {}
+      function deleteTaskLink() {}
+      function exportDailyUserLog() {}
+    </script>
+  </body>
+</html>
